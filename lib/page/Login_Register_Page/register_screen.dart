@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
+
+import '../../model/user_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,6 +17,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailControler =  TextEditingController();
   final TextEditingController _passControler =  TextEditingController();
   final TextEditingController _phoneControler =  TextEditingController();
+  @override
+  void dispose() {
+    _nameControler.dispose();
+    _emailControler.dispose();
+    _passControler.dispose();
+    _phoneControler.dispose();
+    super.dispose();
+  }
 
 
   @override
@@ -33,7 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             children: <Widget>[
               const SizedBox(height: 20,),
               const Text(
-                'Welcome to Library Mirea!',
+                'Добро пожаловать в библиотеку',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Times New Roman',
@@ -43,7 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
               ),
               const Text(
-                'Signup with Library in simple steps ',
+                'Зарегистрируйтесь в библиотеке в несколько простых шагов. ',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Times New Roman',
@@ -168,9 +179,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     height: 60,
                     child: FloatingActionButton(
                       backgroundColor: const Color(0xffFF715D),
-                      onPressed: (){},
+                      onPressed: (){
+                        final user = UserModel(
+                          id_user: 0,
+                          fullName: '',
+                          birth_day: null,
+                          gender: '',
+                          email: _emailControler.text.trim(),
+                          phone: _phoneControler.text.trim(),
+                          username: _nameControler.text.trim(),
+                          password: _passControler.text.trim(),
+                          status: 'active',
+                          created_at: DateTime.now(),
+                          library_card: '',
+                          address: '',
+                          avatar_url: '',
+                          role: '',
+                        );
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PersonInfoScreen(user: user),
+                          ),
+                        );
+                      },
                       child:const Text(
-                        'Signup',
+                        'Регистратор',
                         style: TextStyle(
                           fontFamily: 'Times New Roman',
                           fontSize: 22,
@@ -184,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               RichText(
                 text:  TextSpan(
-                    text: 'Already a user? ',
+                    text: 'Уже пользователь?',
                     style: const TextStyle(
                         fontFamily: 'Times New Roman',
                         fontSize: 16,
@@ -193,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: <TextSpan>[
                       TextSpan(
                           recognizer: TapGestureRecognizer()..onTap =() => Navigator.pushNamed(context, '/login'),
-                          text: ' Login now',
+                          text: 'Войти сейчас',
                           style:const TextStyle(
                             color: Color(0xff3277D8),
                             fontFamily: 'Times New Roman',

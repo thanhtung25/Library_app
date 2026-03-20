@@ -1,7 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:library_app/page/Home_page/home_screen.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/page/Home/home_screen.dart';
+
+import '../../Router/AppRoutes.dart';
+import '../../api_localhost/AuthService.dart';
+import '../../bloc/auth/bloc.dart';
+import '../../bloc/auth/state.dart';
+import '../../bloc/auth/event.dart';
 
 
 class LoginScreen extends StatefulWidget {
@@ -12,14 +21,51 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailControler =  TextEditingController();
+  final TextEditingController _userControler =  TextEditingController();
   final TextEditingController _passControler =  TextEditingController();
+
+
+  @override
+  void dispose() {
+    _userControler.dispose();
+    _passControler.dispose();
+    super.dispose();
+  }
+
+  void login() {
+    context.read<AuthBloc>().add(
+      LoginSubmitted(
+        username: _userControler.text.trim(),
+        password: _passControler.text.trim(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ignore: prefer_typing_uninitialized_variables
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      body: Container(
+      body: BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            // TODO: implement listener}
+            if (state is AuthSuccess) {
+              Navigator.pushReplacementNamed(
+                context,
+                AppRoutes.home,
+                arguments: state.user,
+              );
+            }
+            if (state is AuthError) {
+
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                ),
+              );
+            }
+          },
+  child: Container(
         padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
         constraints: const BoxConstraints.expand(),
         color: const Color(0xffFBEEE4),
@@ -32,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 image: AssetImage('assets/images/lich.png'),
               ),
               const Text(
-                'Welcome to Library Mirea!',
+                'Добро пожаловать в библиотеку!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Times New Roman',
@@ -41,20 +87,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Color(0xffFF9E74),
                 ),
               ),
-              const Text(
-                'Login to continue using Library!',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Times New Roman',
-                  fontSize: 20,
-                  fontWeight: FontWeight.normal,
-                  color: Color(0xffFF9E74),
-                ),
-              ),
+
               Padding(
                 padding: const EdgeInsets.fromLTRB(10, 145, 10, 20),
                 child: TextField(
-                  controller: _emailControler,
+                  controller: _userControler,
                   style: const TextStyle(
                     fontFamily: 'Times New Roman',
                     fontSize: 20,
@@ -110,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Padding(
                   padding: EdgeInsets.fromLTRB(0, 10, 10, 0),
                   child: Text(
-                    'Forgot password?',
+                    'Забыли пароль?',
                     style: TextStyle(
                       fontFamily: 'Times New Roman',
                       fontSize: 18,
@@ -122,53 +159,30 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
 
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 60),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: SizedBox(
                     width: double.infinity,
                     height: 60,
                     child: FloatingActionButton(
                       backgroundColor: const Color(0xffFF9E74),
-                      onPressed: () async {
-                        final username = _emailControler.text.trim();
-                        final password = _passControler.text;
-
-                        if (username.isEmpty || password.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Vui lòng nhập tài khoản và mật khẩu')),
-                          );
-                          return;
-                        }
-
-                        final user = await login(username, password);
-
-                        if (user == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Tài khoản hoặc mật khẩu không đúng')),
-                          );
-                          return;
-                        }
-
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => HomeScreen(user: user)),
-                        );
-                      },
-                      child: const Text(
-                        'Login',
-                        style: TextStyle(
-                          fontFamily: 'Times New Roman',
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                      onPressed: login,
+                        child: Text(
+                          'Войти',
+                          style: TextStyle(
+                            fontFamily: 'Times New Roman',
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    )
                 ),
               ),
 
               RichText(
+                textAlign: TextAlign.center,
                 text: TextSpan(
-                    text: 'New user? ',
+                    text: 'Новый пользователь?',
                     style: const TextStyle(
                         fontFamily: 'Times New Roman',
                         fontSize: 16,
@@ -178,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextSpan(
                         recognizer: TapGestureRecognizer()..onTap =() =>  Navigator.pushNamed(context, '/register'),
 
-                          text: ' Sign up for a new account',
+                          text: 'Зарегистрируйте новый аккаунт.',
                           style: const TextStyle(
                             color: Color(0xff3277D8),
                             fontFamily: 'Times New Roman',
@@ -192,57 +206,10 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+),
 
     );
   }
 }
-
-Future<Map<String, dynamic>?> login(String username, String password) async {
-  await Future.delayed(Duration(milliseconds: 500)); // Giả lập chậm mạng
-
-  final user = users.firstWhere(
-        (u) => u['username'] == username && u['password'] == password,
-    orElse: () => {},
-  );
-
-  return user.isNotEmpty ? user : null;
-}
-
-
-final List<Map<String, dynamic>> users = [
-  {
-    'user_id': 1,
-    'full_name': 'Nguyễn Văn A',
-    'birth_date': DateTime(2000, 5, 12),
-    'gender': 'male',
-    'email': 'vana@student.mirea.edu',
-    'phone': '0912345678',
-    'role': 'student',
-    'username': '1',
-    'password': '1'
-  },
-  {
-    'user_id': 3,
-    'full_name': 'Phạm Văn C',
-    'birth_date': DateTime(1980, 11, 4),
-    'gender': 'male',
-    'email': 'vanc@teacher.mirea.edu',
-    'phone': '0911222333',
-    'role': 'teacher',
-    'username': '2',
-    'password': '2'
-  },
-  {
-    'user_id': 5,
-    'full_name': 'Hoàng Văn E',
-    'birth_date': DateTime(1975, 7, 10),
-    'gender': 'male',
-    'email': 'hoange@library.mirea.edu',
-    'phone': '0933444555',
-    'role': 'librarian',
-    'username': '3',
-    'password': '3'
-  }
-];
 
 
