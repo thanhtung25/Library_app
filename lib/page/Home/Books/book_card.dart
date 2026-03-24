@@ -6,6 +6,7 @@ import 'package:library_app/model/user_model.dart';
 import '../../../Router/AppRoutes.dart';
 import '../../../api_localhost/ApiService.dart';
 import '../../../model/book_model.dart';
+import '../../../model/favorite_manager.dart';
 
 
 
@@ -76,22 +77,28 @@ class BookCard extends StatelessWidget {
                   ),
 
                   Positioned(
-                    top: 10,
-                    right: 10,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          // xử lý lưu sách
-                        },
-                        icon: const Icon(
-                          Icons.favorite_border,
-                          color: Colors.black87,
-                        ),
-                      ),
+                    top: 10, right: 10,
+                    child: ValueListenableBuilder<Set<int>>(
+                      valueListenable: FavoriteManager.notifier,
+                      builder: (context, favorites, _) {
+                        final isFav = favorites.contains(book.id_book);
+                        return GestureDetector(
+                          onTap: () => FavoriteManager.toggle(book.id_book),
+                          child: Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.92),
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 6)],
+                            ),
+                            child: Icon(
+                              isFav ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                              color: isFav ? const Color(0xffFF9E74) : Colors.black54,
+                              size: 20,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
