@@ -88,7 +88,7 @@ class BookCard extends StatelessWidget {
                           // xử lý lưu sách
                         },
                         icon: const Icon(
-                          Icons.bookmark_border,
+                          Icons.favorite_border,
                           color: Colors.black87,
                         ),
                       ),

@@ -104,7 +104,7 @@ class _HomeTabState extends State<HomeTab> {
               builder: (context, snap) {
                 final name = snap.hasData ? snap.data!.fullName : '...';
                 return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Xin chào 👋', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  const Text('Привет 👋', style: TextStyle(color: Colors.white70, fontSize: 20)),
                   const SizedBox(height: 2),
                   Text(
                     name,

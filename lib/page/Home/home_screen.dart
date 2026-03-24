@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:library_app/page/Home/Books/Books_screen.dart';
 import 'package:library_app/page/Home/Books/borrowBook_screen.dart';
-import 'package:library_app/page/Home/History/history_screen.dart';
+import 'package:library_app/page/Home/Favorite/history_screen.dart';
 import 'package:library_app/page/Home/HomeTab.dart';
 import 'package:library_app/page/Home/Profile/profile_screen.dart';
 
@@ -27,7 +27,7 @@ class _MainHomePageState extends State<HomeScreen> {
       HomeTab(user: widget.user,onChangeTab: onTabTapped,),
       BooksScreen(user: widget.user),
       BorrowbookScreen(),
-      HistoryScreen(),
+      FavoriteScreen(),
       ProfileScreen(),
     ];
   }
