@@ -25,7 +25,7 @@ class _MainHomePageState extends State<HomeScreen> {
     super.initState();
     _tabs = [
       HomeTab(user: widget.user,onChangeTab: onTabTapped,),
-      BooksScreen(),
+      BooksScreen(user: widget.user),
       BorrowbookScreen(),
       HistoryScreen(),
       ProfileScreen(),

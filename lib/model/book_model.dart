@@ -6,6 +6,7 @@ class BookModel {
   final int id_author;
   final String title;
   final String isbn;
+  final String language;
   final int publish_year;
   final String description;
   final String image_url;
@@ -17,6 +18,7 @@ class BookModel {
     required this.id_author,
     required this.title,
     required this.isbn,
+    required this.language,
     required this.publish_year,
     required this.description,
     required this.image_url,
@@ -30,6 +32,7 @@ class BookModel {
       id_author: json['id_author'] ?? 0,
       title: json['title'] ?? '',
       isbn: json['isbn'] ?? '',
+      language: json['language'] ?? '',
       publish_year: json['publish_year'] ?? 0,
       description: json['description'] ?? '',
       image_url: json['image_url'] ?? '',
@@ -47,6 +50,7 @@ class BookModel {
       'id_author': id_author,
       'title': title,
       'isbn': isbn,
+      'language': language,
       'publish_year': publish_year,
       'description': description,
       'image_url': image_url,
@@ -84,31 +88,3 @@ class AuthorModel{
 }
 }
 
-
-class CategoryModel{
-  final int id_category;
-  final String name;
-  final String description;
-
-  CategoryModel({
-    required this.id_category,
-    required this.name,
-    required this.description
-  });
-
-  factory CategoryModel.fromJson(Map<String,dynamic> json){
-  return CategoryModel(
-      id_category: json["id_category"] ?? 0,
-      name: json["name"] ?? "",
-      description: json["description"] ?? ""
-  );
-  }
-
-    Map<String, dynamic> toJson(){
-    return{
-    'id_category' : id_category,
-    'name' : name,
-    'description' : description,
-    };
-  }
-}

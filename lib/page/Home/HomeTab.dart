@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
-import 'package:library_app/model/book_model.dart';
+import 'package:library_app/bloc/reservation/bloc.dart';
 
 import '../../api_localhost/AuthService.dart';
-import '../../api_localhost/bookService.dart';
+import '../../api_localhost/BookService.dart';
 import '../../bloc/book/bloc.dart';
+import '../../bloc/reservation/event.dart';
 import '../../model/user_model.dart';
 import 'Books/book_card.dart';
 
@@ -21,8 +22,6 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
-
-
   late Future<UserModel> futureUser;
   @override
   void initState() {
@@ -148,7 +147,14 @@ class _HomeTabState extends State<HomeTab> {
                         children: books.map((book) {
                           return BookCard(
                             book: book,
+                            user: widget.user,
                             authorFuture:  bookService().getAuthorByID(book.id_author),
+                            onReload: () {
+                              context.read<BookBloc>().add(GetBookEvent());
+                            },
+                              onReservationLoad:(){
+                                context.read<ReservationBloc>().add(GetReservationsByUserEvent(widget.user.id_user));
+                              }
                           );
                         }).toList(),
                       ),

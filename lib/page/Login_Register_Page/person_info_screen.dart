@@ -12,7 +12,6 @@ import 'dart:math';
 
 class PersonInfoScreen extends StatefulWidget {
   final UserModel user;
-
   const PersonInfoScreen({super.key, required this.user});
 
   @override

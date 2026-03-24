@@ -21,15 +21,6 @@ class bookService {
     return AuthorModel.fromJson(data);
   }
 
-  Future<List<CategoryModel>> getAllCategory() async{
-    final data = await ApiService.get("/categories-management/categories",);
-
-    print(data);
-    return (data as List)
-        .map((e) => CategoryModel.fromJson(e))
-    .toList();
-  }
-
   Future<List<BookModel>> getBookByCategory (
       String category
       )async {
@@ -42,7 +33,14 @@ class bookService {
     return data
         .map<BookModel>((e) => BookModel.fromJson(e))
         .toList();
-
   }
 
+  Future<BookModel> getBookById(
+      int id_book
+      )async{
+    final data = await ApiService.get(
+      "/book-management/book/${id_book}",
+    );
+    return BookModel.fromJson(data);
+  }
 }

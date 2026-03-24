@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:library_app/api_localhost/bookService.dart';
+import 'package:library_app/api_localhost/BookService.dart';
+import 'package:library_app/api_localhost/CategorySevice.dart';
 import 'package:library_app/bloc/auth/bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
+import 'package:library_app/bloc/category/bloc.dart';
+import 'package:library_app/bloc/reservation/bloc.dart';
 
 import 'Router/AppRouter.dart';
 import 'Router/AppRoutes.dart';
 import 'api_localhost/AuthService.dart';
+import 'api_localhost/reservation_service.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -18,6 +22,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final AuthService authService = AuthService();
   final bookService bookservice = bookService();
+  final CategoryService categoryService = CategoryService();
+  final ReservationService reservationService = ReservationService();
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +34,12 @@ class _MyAppState extends State<MyApp> {
         ),
         BlocProvider(
           create: (_) => BookBloc(bookservice),
+        ),
+        BlocProvider(
+          create: (_) => CategoryBloc(categoryService),
+        ),
+        BlocProvider(
+          create: (_) => ReservationBloc(reservationService),
         ),
       ],
       child: MaterialApp(

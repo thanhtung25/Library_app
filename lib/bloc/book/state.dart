@@ -16,6 +16,17 @@ class BookSuccess extends BookState {
 
 class BookError extends BookState {
   final String message;
-
   BookError(this.message);
+}
+
+
+class BookByCategorySuccess extends BookState {
+  final Map<String, List<BookModel>> booksByCategory;
+  final List<BookModel> allBooks;
+  BookByCategorySuccess(this.booksByCategory, this.allBooks,);
+}
+
+class BookByIdSucces extends BookState{
+  final BookModel bookModel;
+  BookByIdSucces({required this.bookModel});
 }

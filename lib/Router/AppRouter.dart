@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/AuthService.dart';
+import 'package:library_app/api_localhost/BookService.dart';
+import 'package:library_app/api_localhost/CategorySevice.dart';
+import 'package:library_app/bloc/book/bloc.dart';
+import 'package:library_app/model/book_model.dart';
 import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
 import 'package:library_app/page/Login_Register_Page/register_screen.dart';
+import '../bloc/auth/bloc.dart';
+import '../bloc/category/bloc.dart';
 import '../model/user_model.dart';
+import '../page/CartReservation/CartReservationScreen.dart';
+import '../page/Home/Books/book_detail_screen.dart';
 import '../page/Home/home_screen.dart';
 import '../page/Login_Register_Page/login_screen.dart';
 import 'AppRoutes.dart';
@@ -10,7 +20,6 @@ class AppRouter {
     switch (settings.name) {
       case AppRoutes.home:
         final user = settings.arguments as UserModel;
-
         return MaterialPageRoute(
           builder: (_) => HomeScreen(user: user),
         );
@@ -21,34 +30,23 @@ class AppRouter {
       case AppRoutes.personinfo:
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(builder: (_) => PersonInfoScreen(user:user));
-
-      // case AppRoutes.books:
-      //   return MaterialPageRoute(builder: (_) => BooksScreen());
-      //
-      // case AppRoutes.bookDetail:
-      //   final args = settings.arguments as Map<String, dynamic>?;
-      //   return MaterialPageRoute(
-      //     builder: (_) => BookDetailScreen(/*bookId: args?['bookId']*/),
-      //   );
-
-      // case AppRoutes.history:
-      //   return MaterialPageRoute(builder: (_) => HistoryScreen());
-
-      // case AppRoutes.profile:
-      //   return MaterialPageRoute(builder: (_) => ProfileScreen());
-
-      // case AppRoutes.borrowBook:
-      //   final args = settings.arguments as Map<String, dynamic>?;
-      //   return MaterialPageRoute(
-      //     builder: (_) => BorrowbookScreen(/*bookId: args?['bookId']*/),
-      //   );
-      //
-      // case AppRoutes.returnBook:
-      //   final args = settings.arguments as Map<String, dynamic>?;
-      //   return MaterialPageRoute(
-      //     builder: (_) => ReturnbookScreen(/*bookId: args?['bookId']*/),
-      //   );
-
+      case AppRoutes.bookDetail:
+        final args = settings.arguments as Map<String, dynamic>;
+        final book = args['book'] as BookModel;
+        final user = args['user'] as UserModel;
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers:[
+              BlocProvider(
+                create: (_) => BookBloc(bookService()),
+              ),
+            ],
+            child: BookDetailScreen(bookModel: book, userModel: user,),
+          ),
+        );
+      case AppRoutes.cardRecervation:
+        final user = settings.arguments as UserModel;
+        return MaterialPageRoute(builder: (_) => CartReservationScreen(userModel: user,));
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
