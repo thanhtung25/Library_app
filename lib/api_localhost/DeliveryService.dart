@@ -26,4 +26,12 @@ class DeliveryService {
   Future<void> deleteDelivery(int id_delivery) async {
     await ApiService.delete('/delivery-management/delivery/$id_delivery');
   }
+
+  Future<DeliveryModel> createDelivery(DeliveryModel delivery) async {
+    final data = await ApiService.post(
+      '/delivery-management/delivery',
+      delivery.toJson(),
+    );
+    return DeliveryModel.fromJson(data);
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
+import 'package:library_app/bloc/book_copy/event.dart';
 import 'package:library_app/bloc/category/bloc.dart';
 import 'package:library_app/bloc/category/event.dart';
 import 'package:library_app/bloc/category/state.dart';
@@ -11,6 +12,9 @@ import 'package:library_app/bloc/reservation/event.dart';
 import '../../api_localhost/AuthService.dart';
 import '../../api_localhost/BookService.dart';
 import '../../bloc/book/bloc.dart';
+import '../../bloc/book_copy/bloc.dart';
+import '../../bloc/book_copy/state.dart';
+import '../../model/book_copy_model.dart';
 import '../../model/user_model.dart';
 import 'Books/book_card.dart';
 
@@ -35,12 +39,16 @@ class _HomeTabState extends State<HomeTab> {
   int    _catIndex    = 0;
   String _catSelected = '';
 
+  // ─── BookService instance ───────────────────────────────
+  final bookService _bookService = bookService();
+
   @override
   void initState() {
     super.initState();
     _futureUser = AuthService().getUserbyId(widget.user.id_user);
     context.read<BookBloc>().add(GetBookEvent());
     context.read<CategoryBloc>().add(GetAllCategoryEvent());
+    context.read<BookCopyBloc>().add(GetBookCopyEvent());
   }
 
   // ─── build ─────────────────────────────────────────────
@@ -55,7 +63,6 @@ class _HomeTabState extends State<HomeTab> {
           SliverToBoxAdapter(child: _searchBar()),
           SliverToBoxAdapter(child: _bannerCard()),
           SliverToBoxAdapter(child: _quickActions()),
-          SliverToBoxAdapter(child: _categorySection()),
           SliverToBoxAdapter(child: _bookSection()),
           const SliverToBoxAdapter(child: SizedBox(height: 110)),
         ],
@@ -83,9 +90,7 @@ class _HomeTabState extends State<HomeTab> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Avatar + tên
           Row(children: [
-            // Avatar có viền trắng + shadow
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -118,7 +123,6 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ]),
 
-          // Notification bell
           Stack(children: [
             Container(
               width: 44, height: 44,
@@ -263,145 +267,114 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ═══════════════════════════════════════════════════════
-  // CATEGORY CHIPS
-  // ═══════════════════════════════════════════════════════
-  Widget _categorySection() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 26),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Text('Категория', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
-        ),
-        const SizedBox(height: 14),
-        BlocBuilder<CategoryBloc, CategoryState>(
-          builder: (context, state) {
-            final cats = <String>['Все'];
-            if (state is CategorySuccess) {
-              cats.addAll(state.category.map((c) => c.name));
-            }
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: List.generate(cats.length, (i) {
-                  final sel = _catIndex == i;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() { _catIndex = i; _catSelected = i == 0 ? '' : cats[i]; });
-                      if (i == 0) {
-                        context.read<BookBloc>().add(GetBookEvent());
-                      } else {
-                        context.read<BookBloc>().add(GetBookByCategoryEvent(category: cats[i]));
-                      }
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeOut,
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: sel ? _orange : Colors.white,
-                        borderRadius: BorderRadius.circular(50),
-                        boxShadow: [BoxShadow(
-                          color: sel ? _orange.withOpacity(0.38) : Colors.black.withOpacity(0.06),
-                          blurRadius: sel ? 10 : 6,
-                          offset: const Offset(0, 4),
-                        )],
-                      ),
-                      child: Text(
-                        cats[i],
-                        style: TextStyle(
-                          color: sel ? Colors.white : Colors.grey.shade500,
-                          fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            );
-          },
-        ),
-      ]),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════
   // BOOK LIST
   // ═══════════════════════════════════════════════════════
   Widget _bookSection() {
     return Padding(
       padding: const EdgeInsets.only(top: 24),
       child: Column(children: [
-        // Title row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Предложения для вас', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+              const Text('Предложения для вас',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
               GestureDetector(
                 onTap: () => widget.onChangeTab(1),
-                child: const Text('Посмотреть все →', style: TextStyle(color: _orange, fontSize: 13, fontWeight: FontWeight.w600)),
+                child: const Text('Посмотреть все →',
+                    style: TextStyle(color: _orange, fontSize: 13, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
 
-        // BlocBuilder
-        BlocBuilder<BookBloc, BookState>(
-          builder: (context, state) {
-            // Loading
-            if (state is BookLoading) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 50),
-                child: Center(child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5)),
-              );
-            }
-            // Error
-            if (state is BookError) {
-              return Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(state.message, style: const TextStyle(color: Colors.redAccent)),
-              );
+        // ── Lắng nghe đồng thời BookBloc + BookCopyBloc ──
+        BlocBuilder<BookCopyBloc, BookCopyState>(
+          builder: (context, copyState) {
+            // Lấy map bookCopy theo id_book từ BookCopyBloc
+            // Ưu tiên BookCopyByIdBookSuccess, fallback BookCopySuccess
+            final Map<int, BookCopyModel> copyByBook = {};
+
+            if (copyState is BookCopyByIdBookSuccess) {
+              // map: id_book → first BookCopyModel
+              copyState.bookCopybyIdBook.forEach((idBook, list) {
+                if (list.isNotEmpty) copyByBook[idBook] = list.first;
+              });
+            } else if (copyState is BookCopySuccess) {
+              // Từ danh sách allBookCopy, lấy bản copy đầu tiên cho mỗi id_book
+              for (final copy in copyState.bookCopies) {
+                copyByBook.putIfAbsent(copy.id_book, () => copy);
+              }
             }
 
-            // Resolve list
-            List books = [];
-            if (state is BookSuccess) {
-              books = state.books;
-            } else if (state is BookByCategorySuccess) {
-              books = _catIndex == 0
-                  ? state.allBooks
-                  : (state.booksByCategory[_catSelected] ?? state.allBooks);
-            }
+            return BlocBuilder<BookBloc, BookState>(
+              builder: (context, bookState) {
+                if (bookState is BookLoading || copyState is BookCopyLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 50),
+                    child: Center(child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5)),
+                  );
+                }
+                if (bookState is BookError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(bookState.message, style: const TextStyle(color: Colors.redAccent)),
+                  );
+                }
 
-            if (books.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: Text('Книг нет.', style: TextStyle(color: Colors.grey))),
-              );
-            }
+                List books = [];
+                if (bookState is BookSuccess) {
+                  books = bookState.books;
+                } else if (bookState is BookByCategorySuccess) {
+                  books = _catIndex == 0
+                      ? bookState.allBooks
+                      : (bookState.booksByCategory[_catSelected] ?? bookState.allBooks);
+                }
 
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: books.map((book) => BookCard(
-                  book: book,
-                  user: widget.user,
-                  authorFuture: bookService().getAuthorByID(book.id_author),
-                  onReload: () => context.read<BookBloc>().add(GetBookEvent()),
-                  onReservationLoad: () => context.read<ReservationBloc>()
-                      .add(GetReservationsByUserEvent(widget.user.id_user)),
-                )).toList(),
-              ),
+                if (books.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: Text('Книг нет.', style: TextStyle(color: Colors.grey))),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: books.map((book) {
+                      // Gọi GetBookByIdBookEvent nếu chưa có bản copy cho book này
+                      if (!copyByBook.containsKey(book.id_book)) {
+                        context.read<BookCopyBloc>().add(
+                          GetBookByIdBookEvent(id_book: book.id_book),
+                        );
+                      }
+
+                      // Lấy bookCopy tương ứng; nếu chưa có thì dùng placeholder
+                      final BookCopyModel bookCopy = copyByBook[book.id_book] ??
+                          BookCopyModel(
+                            id_book: book.id_book,
+                            barcode: '',
+                            status: 'unknown',
+                          );
+
+                      return BookCard(
+                        book: book,
+                        user: widget.user,
+                        bookCopy: bookCopy,
+                        authorFuture: _bookService.getAuthorByID(book.id_author),
+                        onReload: () => context.read<BookBloc>().add(GetBookEvent()),
+                        onReservationLoad: () => context.read<ReservationBloc>()
+                            .add(GetReservationsByUserEvent(widget.user.id_user)),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
             );
           },
         ),

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/BookCopyService.dart';
 import 'package:library_app/api_localhost/BookService.dart';
 import 'package:library_app/api_localhost/CategorySevice.dart';
+import 'package:library_app/api_localhost/FavoriteService.dart';
 import 'package:library_app/bloc/auth/bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
+import 'package:library_app/bloc/book_copy/bloc.dart';
 import 'package:library_app/bloc/category/bloc.dart';
+import 'package:library_app/bloc/favorite/bloc.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 
 import 'Router/AppRouter.dart';
@@ -24,6 +28,8 @@ class _MyAppState extends State<MyApp> {
   final bookService bookservice = bookService();
   final CategoryService categoryService = CategoryService();
   final ReservationService reservationService = ReservationService();
+  final FavoriteService favoriteService = FavoriteService();
+  final BookCopyService bookCopyService = BookCopyService();
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +46,12 @@ class _MyAppState extends State<MyApp> {
         ),
         BlocProvider(
           create: (_) => ReservationBloc(reservationService),
+        ),
+        BlocProvider(
+          create: (_) => FavoriteBloc(favoriteService),
+        ),
+        BlocProvider(
+          create: (_) => BookCopyBloc(bookCopyService),
         ),
       ],
       child: MaterialApp(

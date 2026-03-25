@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:library_app/api_localhost/AuthService.dart';
 import 'package:library_app/api_localhost/BookService.dart';
-import 'package:library_app/api_localhost/CategorySevice.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/model/book_model.dart';
 import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
 import 'package:library_app/page/Login_Register_Page/register_screen.dart';
-import '../bloc/auth/bloc.dart';
-import '../bloc/category/bloc.dart';
 import '../model/user_model.dart';
 import '../page/CartReservation/CartReservationScreen.dart';
 import '../page/Home/Books/book_detail_screen.dart';
@@ -47,6 +43,7 @@ class AppRouter {
       case AppRoutes.cardRecervation:
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(builder: (_) => CartReservationScreen(userModel: user,));
+
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
