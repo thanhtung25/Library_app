@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
 import 'package:library_app/bloc/reservation/state.dart';
@@ -117,7 +118,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Lỗi tải danh sách sách: $e'),
+          content: Text(
+            context.tr('cart.load_books_error', params: {'error': '$e'}),
+          ),
         ),
       );
     }
@@ -131,16 +134,19 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('Подтверждение'),
+          title: Text(context.tr('cart.delete_title')),
           content: Text(
-            'Вы уверены, что хотите удалить "${book.title ?? 'эту книгу'}" из корзины?',
+            context.tr(
+              'cart.delete_confirm',
+              params: {'title': book.title},
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Нет'),
+              child: Text(context.tr('cart.no')),
             ),
             ElevatedButton(
               onPressed: () {
@@ -154,7 +160,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text('Да'),
+              child: Text(context.tr('cart.yes')),
             ),
           ],
         );
@@ -173,8 +179,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
       );
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось удалить книгу из корзины'),
+        SnackBar(
+          content: Text(context.tr('cart.delete_failed')),
         ),
       );
     }
@@ -183,8 +189,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
   void _confirmReservation() {
     if (reservedBooks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Корзина пуста'),
+        SnackBar(
+          content: Text(context.tr('cart.empty')),
         ),
       );
       return;
@@ -194,8 +200,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
       if (addressController.text.trim().isEmpty ||
           phoneController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Заполните адрес и телефон для доставки'),
+          SnackBar(
+            content: Text(context.tr('cart.fill_delivery_info')),
           ),
         );
         return;
@@ -205,8 +211,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
     if (deliveryMethod == 'pickup') {
       if (selectedDate == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Выберите дату получения'),
+          SnackBar(
+            content: Text(context.tr('cart.select_pickup_date')),
           ),
         );
         return;
@@ -214,14 +220,14 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Бронирование успешно оформлено'),
+      SnackBar(
+        content: Text(context.tr('cart.success')),
       ),
     );
   }
 
   String _formatPickupDate() {
-    if (selectedDate == null) return 'Не выбрана';
+    if (selectedDate == null) return context.tr('cart.not_selected');
     return '${selectedDate!.day.toString().padLeft(2, '0')}.'
         '${selectedDate!.month.toString().padLeft(2, '0')}.'
         '${selectedDate!.year}';
@@ -243,10 +249,10 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                     icon: const Icon(Icons.arrow_back_ios_new, size: 20),
                   ),
                   const SizedBox(width: 4),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Корзина',
-                      style: TextStyle(
+                      context.tr('cart.title'),
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: Colors.black,
@@ -296,10 +302,10 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                   if (state is ReservationLoaded &&
                       state.reservations.isEmpty &&
                       !isLoadingBooks) {
-                    return const Center(
+                    return Center(
                       child: Text(
-                        'Корзина пуста',
-                        style: TextStyle(
+                        context.tr('cart.empty'),
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
@@ -319,7 +325,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 14),
                             child: _buildBookCard(
-                              title: book.title ?? 'Без названия',
+                              title: book.title,
                               imagePath: "${ApiService.baseUrl}${book.image_url}" ?? '',
                               selected: true,
                               onSelect: () {},
@@ -332,9 +338,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
 
                       const SizedBox(height: 18),
 
-                      const Text(
-                        'Способ получения',
-                        style: TextStyle(
+                      Text(
+                        context.tr('cart.method_title'),
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
@@ -342,15 +348,15 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                       const SizedBox(height: 12),
 
                       _buildMethodCard(
-                        title: 'Доставка',
-                        subtitle: 'Получение книги по указанному адресу',
+                        title: context.tr('cart.delivery_title'),
+                        subtitle: context.tr('cart.delivery_subtitle'),
                         icon: Icons.local_shipping_outlined,
                         value: 'delivery',
                       ),
                       const SizedBox(height: 10),
                       _buildMethodCard(
-                        title: 'Самовывоз из библиотеки',
-                        subtitle: 'Получение книги в библиотеке',
+                        title: context.tr('cart.pickup_title'),
+                        subtitle: context.tr('cart.pickup_subtitle'),
                         icon: Icons.location_on_outlined,
                         value: 'pickup',
                       ),
@@ -358,9 +364,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                       const SizedBox(height: 20),
 
                       if (deliveryMethod == 'delivery') ...[
-                        const Text(
-                          'Данные для доставки',
-                          style: TextStyle(
+                        Text(
+                          context.tr('cart.delivery_info'),
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
@@ -368,22 +374,22 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                         const SizedBox(height: 12),
                         _buildTextField(
                           controller: addressController,
-                          hintText: 'Адрес доставки',
+                          hintText: context.tr('cart.delivery_address'),
                           icon: Icons.home_outlined,
                         ),
                         const SizedBox(height: 12),
                         _buildTextField(
                           controller: phoneController,
-                          hintText: 'Контактный телефон',
+                          hintText: context.tr('cart.delivery_phone'),
                           icon: Icons.phone_outlined,
                           keyboardType: TextInputType.phone,
                         ),
                       ],
 
                       if (deliveryMethod == 'pickup') ...[
-                        const Text(
-                          'Данные для получения',
-                          style: TextStyle(
+                        Text(
+                          context.tr('cart.pickup_info'),
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
@@ -410,7 +416,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                                 Expanded(
                                   child: Text(
                                     selectedDate == null
-                                        ? 'Выберите дату получения'
+                                        ? context.tr('cart.pickup_date_hint')
                                         : _formatPickupDate(),
                                     style: const TextStyle(fontSize: 15),
                                   ),
@@ -468,9 +474,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
 
                       const SizedBox(height: 20),
 
-                      const Text(
-                        'Комментарий',
-                        style: TextStyle(
+                      Text(
+                        context.tr('cart.comment'),
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
@@ -478,7 +484,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                       const SizedBox(height: 12),
                       _buildTextField(
                         controller: noteController,
-                        hintText: 'Введите комментарий',
+                        hintText: context.tr('cart.comment_hint'),
                         icon: Icons.edit_note_outlined,
                         maxLines: 3,
                       ),
@@ -496,38 +502,41 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Информация о бронировании',
-                              style: TextStyle(
+                            Text(
+                              context.tr('cart.summary_title'),
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             const SizedBox(height: 12),
                             _buildSummaryRow(
-                              'Количество книг',
+                              context.tr('cart.summary_books'),
                               reservedBooks.length.toString(),
                             ),
                             _buildSummaryRow(
-                              'Способ получения',
+                              context.tr('cart.summary_method'),
                               deliveryMethod == 'delivery'
-                                  ? 'Доставка'
-                                  : 'Самовывоз',
+                                  ? context.tr('cart.method_delivery')
+                                  : context.tr('cart.method_pickup'),
                             ),
                             if (deliveryMethod == 'pickup')
                               _buildSummaryRow(
-                                'Дата получения',
+                                context.tr('cart.summary_pickup_date'),
                                 _formatPickupDate(),
                               ),
                             if (deliveryMethod == 'pickup')
                               _buildSummaryRow(
-                                'Время',
+                                context.tr('cart.summary_time'),
                                 selectedTime,
                               ),
-                            _buildSummaryRow('Срок бронирования', '3 дня'),
                             _buildSummaryRow(
-                              'Статус',
-                              'Ожидает подтверждения',
+                              context.tr('cart.summary_duration'),
+                              context.tr('cart.summary_duration_value'),
+                            ),
+                            _buildSummaryRow(
+                              context.tr('cart.summary_status'),
+                              context.tr('cart.summary_status_value'),
                             ),
                           ],
                         ),
@@ -548,9 +557,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          child: const Text(
-                            'Подтвердить бронирование',
-                            style: TextStyle(
+                          child: Text(
+                            context.tr('cart.confirm_button'),
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
@@ -656,15 +665,15 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                   future: authorFuture,
                   builder: (context, asyncSnapshot) {
                     if (asyncSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Text("Đang tải...");
+                      return Text(context.tr('common.loading'));
                     }
 
                     if (asyncSnapshot.hasError) {
-                      return const Text("Lỗi tác giả");
+                      return Text(context.tr('common.author_error'));
                     }
 
                     if (!asyncSnapshot.hasData) {
-                      return const Text("Không có tác giả");
+                      return Text(context.tr('common.author_unavailable'));
                     }
                     return Text(
                         asyncSnapshot.data!.full_name,
@@ -678,7 +687,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Срок бронирования: 3 дня',
+                  context.tr('cart.book_duration'),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade700,

@@ -1,17 +1,12 @@
-import 'dart:convert';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:library_app/page/Home/home_screen.dart';
+import 'package:library_app/localization/app_localizations.dart';
 
 import '../../Router/AppRoutes.dart';
-import '../../api_localhost/AuthService.dart';
 import '../../bloc/auth/bloc.dart';
-import '../../bloc/auth/state.dart';
 import '../../bloc/auth/event.dart';
-
+import '../../bloc/auth/state.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -56,10 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
               );
             }
             if (state is AuthError) {
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(
+              ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message),
+                  content: Text(context.tr(state.message)),
                 ),
               );
             }
@@ -76,10 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 200,
                 image: AssetImage('assets/images/lich.png'),
               ),
-              const Text(
-                'Добро пожаловать в библиотеку!',
+              Text(
+                context.tr('login.welcome'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Times New Roman',
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
@@ -97,15 +91,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontWeight: FontWeight.normal,
                     color: Color(0xffFF9E74),
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.all(10),
-                      labelText: "User Name",
-                      prefixIcon: SizedBox(
+                      labelText: context.tr('login.username_label'),
+                      prefixIcon: const SizedBox(
                         width: 50, child: Icon(Icons.mail),
                       ),
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(20)),
                           borderSide: BorderSide(color: Colors.white, width: 1)
                       )
@@ -123,15 +117,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     fontWeight: FontWeight.normal,
                     color: Color(0xffFF9E74),
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.all(10),
-                      labelText: "Password",
-                      prefixIcon: SizedBox(
+                      labelText: context.tr('login.password_label'),
+                      prefixIcon: const SizedBox(
                         width: 50, child: Icon(Icons.vpn_key),
                       ),
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(Radius.circular(20)),
                           borderSide: BorderSide(color: Colors.white, width: 1)
                       )
@@ -143,11 +137,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 constraints: BoxConstraints.loose(
                     const Size(double.infinity, 40)),
                 alignment: AlignmentDirectional.centerEnd,
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.fromLTRB(0, 10, 10, 0),
                   child: Text(
-                    'Забыли пароль?',
-                    style: TextStyle(
+                    context.tr('login.forgot_password'),
+                    style: const TextStyle(
                       fontFamily: 'Times New Roman',
                       fontSize: 18,
                       fontWeight: FontWeight.normal,
@@ -166,8 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       backgroundColor: const Color(0xffFF9E74),
                       onPressed: login,
                         child: Text(
-                          'Войти',
-                          style: TextStyle(
+                          context.tr('login.submit'),
+                          style: const TextStyle(
                             fontFamily: 'Times New Roman',
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -181,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                    text: 'Новый пользователь?',
+                    text: context.tr('login.new_user'),
                     style: const TextStyle(
                         fontFamily: 'Times New Roman',
                         fontSize: 16,
@@ -191,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextSpan(
                         recognizer: TapGestureRecognizer()..onTap =() =>  Navigator.pushNamed(context, '/register'),
 
-                          text: 'Зарегистрируйте новый аккаунт.',
+                          text: context.tr('login.register_now'),
                           style: const TextStyle(
                             color: Color(0xff3277D8),
                             fontFamily: 'Times New Roman',

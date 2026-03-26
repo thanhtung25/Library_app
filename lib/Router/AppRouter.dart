@@ -4,6 +4,7 @@ import 'package:library_app/api_localhost/AuthService.dart';
 import 'package:library_app/api_localhost/BookService.dart';
 import 'package:library_app/api_localhost/CategorySevice.dart';
 import 'package:library_app/bloc/book/bloc.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/model/book_model.dart';
 import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
 import 'package:library_app/page/Login_Register_Page/register_screen.dart';
@@ -49,8 +50,15 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => CartReservationScreen(userModel: user,));
       default:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
-            body: Center(child: Text('Không tìm thấy màn hình: ${settings.name}')),
+          builder: (context) => Scaffold(
+            body: Center(
+              child: Text(
+                context.tr(
+                  'router.not_found',
+                  params: {'route': settings.name ?? ''},
+                ),
+              ),
+            ),
           ),
         );
     }

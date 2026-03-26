@@ -2,6 +2,7 @@
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/model/user_model.dart';
 import '../../../Router/AppRoutes.dart';
 import '../../../api_localhost/ApiService.dart';
@@ -130,15 +131,15 @@ class BookCard extends StatelessWidget {
                   future: authorFuture,
                   builder: (context, asyncSnapshot) {
                     if (asyncSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Text("Đang tải...");
+                      return Text(context.tr('common.loading'));
                     }
 
                     if (asyncSnapshot.hasError) {
-                      return const Text("Lỗi tác giả");
+                      return Text(context.tr('common.author_error'));
                     }
 
                     if (!asyncSnapshot.hasData) {
-                      return const Text("Không có tác giả");
+                      return Text(context.tr('common.author_unavailable'));
                     }
 
                     return Text(

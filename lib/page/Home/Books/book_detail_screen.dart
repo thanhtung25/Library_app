@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/state.dart';
 import 'package:library_app/model/book_model.dart';
 import 'package:library_app/model/user_model.dart';
@@ -190,15 +191,15 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                             future: authorFuture,
                                             builder: (context, snap) {
                                               if (snap.connectionState == ConnectionState.waiting) {
-                                                return const Text("Đang tải...");
+                                                return Text(context.tr('common.loading'));
                                               }
 
                                               if (snap.hasError) {
-                                                return const Text("Lỗi tác giả");
+                                                return Text(context.tr('common.author_error'));
                                               }
 
                                               if (!snap.hasData) {
-                                                return const Text("Không có tác giả");
+                                                return Text(context.tr('common.author_unavailable'));
                                               }
                                               return Text(
                                                 snap.data!.full_name,
@@ -221,7 +222,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
                                 // description block
                                 BookDetailScreen._infoBox(
-                                  title: 'Подробное описание:',
+                                  title: context.tr('book_detail.description'),
                                   backgroundColor: const Color(0xFFD9F6A6),
                                   child: Text(
                                     book.description,
@@ -237,7 +238,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                 const SizedBox(height: 14),
 
                                 BookDetailScreen._smallTag(
-                                  text: 'Язык: ${book.language}',
+                                  text: context.tr(
+                                    'book_detail.language',
+                                    params: {
+                                      'language': context.l10n.bookLanguageName(book.language),
+                                    },
+                                  ),
                                   color: const Color(0xFFE6D6FA),
                                 ),
 
@@ -247,19 +253,21 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   future: authorFuture,
                                   builder: (context, snap) {
                                     if (snap.connectionState == ConnectionState.waiting) {
-                                      return const Text("Đang tải...");
+                                      return Text(context.tr('common.loading'));
                                     }
 
                                     if (snap.hasError) {
-                                      return const Text("Lỗi tác giả");
+                                      return Text(context.tr('common.author_error'));
                                     }
 
                                     if (!snap.hasData) {
-                                      return const Text("Không có tác giả");
+                                      return Text(context.tr('common.author_unavailable'));
                                     }
                                     return BookDetailScreen._smallTag(
-                                      text:
-                                      'Биография автора: ${snap.data!.biography}',
+                                      text: context.tr(
+                                        'book_detail.author_bio',
+                                        params: {'bio': snap.data!.biography},
+                                      ),
                                       color: const Color(0xFFF3C7EF),
                                     );
                                   }
@@ -271,7 +279,11 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                   listener: (context, state) {
                                     if (state is ReservationCreated) {
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Бронирование успешно создано')),
+                                        SnackBar(
+                                          content: Text(
+                                            context.tr('book_detail.reservation_success'),
+                                          ),
+                                        ),
                                       );
 
                                       Navigator.pop(context, true);
@@ -299,7 +311,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                                 ReservationModel(
                                                   id_user: widget.userModel.id_user,
                                                   id_book: widget.bookModel.id_book,
-                                                  comment: 'Book in advance via app',
+                                                  comment: context.tr('book_detail.default_comment'),
                                                   status: 'pending',
                                                 ),
                                               ),
@@ -307,9 +319,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                                           },
                                           child: state is ReservationLoading
                                               ? const CircularProgressIndicator(color: Colors.white)
-                                              : const Text(
-                                            'Бронирования',
-                                            style: TextStyle(
+                                              : Text(
+                                            context.tr('book_detail.reserve_button'),
+                                            style: const TextStyle(
                                               fontFamily: 'Times New Roman',
                                               fontSize: 22,
                                               fontWeight: FontWeight.bold,

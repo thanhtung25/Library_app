@@ -5,6 +5,7 @@ import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/model/book_model.dart';
 import 'package:library_app/model/favorite_manager.dart';
 import 'package:library_app/model/user_model.dart';
@@ -52,12 +53,12 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Сохранённые книги', style: TextStyle(
+              Text(context.tr('favorite.title'), style: const TextStyle(
                 fontSize: 22, fontWeight: FontWeight.w800,
                 color: _textDark, fontFamily: 'Nunito',
               )),
               const SizedBox(height: 2),
-              Text('Ваши избранные книги',
+              Text(context.tr('favorite.subtitle'),
                   style: TextStyle(fontSize: 12, color: Colors.brown.shade400)),
             ]),
           ),
@@ -78,7 +79,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 controller: _searchCtrl,
                 style: const TextStyle(fontSize: 14, color: _textDark),
                 decoration: InputDecoration(
-                  hintText: 'Поиск книги...',
+                  hintText: context.tr('favorite.search_hint'),
                   hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                   prefixIcon: const Icon(Icons.search_rounded, color: _orange, size: 22),
                   suffixIcon: _searchQuery.isNotEmpty
@@ -130,10 +131,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 children: [
                   Icon(Icons.bookmark_border_rounded, size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 14),
-                  Text('Нет сохранённых книг',
+                  Text(context.tr('favorite.empty_title'),
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
-                  Text('Нажмите 🔖 на книге, чтобы добавить',
+                  Text(context.tr('favorite.empty_subtitle'),
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                       textAlign: TextAlign.center),
                 ],
@@ -146,7 +147,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 children: [
                   Icon(Icons.search_off_rounded, size: 72, color: Colors.grey.shade300),
                   const SizedBox(height: 12),
-                  Text('Книги не найдены',
+                  Text(context.tr('favorite.not_found'),
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
                 ],
               ));

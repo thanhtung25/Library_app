@@ -1,11 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/auth/event.dart';
 import 'package:library_app/bloc/auth/state.dart';
+import 'package:library_app/localization/app_localizations.dart';
 
 import '../../Router/AppRoutes.dart';
-import '../../api_localhost/AuthService.dart';
 import '../../bloc/auth/bloc.dart';
 import '../../model/user_model.dart';
 import 'dart:math';
@@ -22,12 +21,11 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
 
   final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _addressControler = TextEditingController();
-  TextEditingController _birthController = TextEditingController();
+  final TextEditingController _birthController = TextEditingController();
   DateTime? _selectedBirthDate;
   String? _selectedGender;
   String? _selectedRole;
 
-  final List<String> genders = ['Мужской', 'Женский'];
   final List<String> roles = ['reader', 'librarian'];
 
   late UserModel user;
@@ -62,6 +60,13 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
   }
 
   void register() {
+    if (_selectedGender == null || _selectedRole == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.tr('auth.error.register_required'))),
+      );
+      return;
+    }
+
     user = user.copyWith(
       fullName: _fullNameController.text.trim(),
       gender: _selectedGender!,
@@ -99,9 +104,9 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
         backgroundColor: const Color(0xffFBEEE4),
         iconTheme: const IconThemeData(color: Color(0xffFF715D)),
         elevation: 0,
-        title: const Text(
-          'Персональная информация',
-          style: TextStyle(
+        title: Text(
+          context.tr('person_info.title'),
+          style: const TextStyle(
             fontFamily: 'Times New Roman',
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -125,7 +130,7 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
             ScaffoldMessenger.of(context)
                 .showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(context.tr(state.message)),
               ),
             );
           }
@@ -147,14 +152,14 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                       fontWeight: FontWeight.normal,
                       color: Color(0xffFF9E74),
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.all(10),
-                      labelText: "Полное имя",
-                      prefixIcon: SizedBox(
+                      labelText: context.tr('person_info.full_name'),
+                      prefixIcon: const SizedBox(
                           width: 50, child: Icon(Icons.person)),
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                         borderSide: BorderSide(color: Colors.white, width: 1),
                       ),
@@ -175,16 +180,16 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                       fontWeight: FontWeight.normal,
                       color: Color(0xffFF9E74),
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.all(10),
-                      labelText: "Дата рождения",
-                      prefixIcon: SizedBox(
+                      labelText: context.tr('person_info.birth_date'),
+                      prefixIcon: const SizedBox(
                         width: 50,
                         child: Icon(Icons.calendar_month),
                       ),
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                         borderSide: BorderSide(color: Colors.white, width: 1),
                       ),
@@ -194,15 +199,15 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
                   child: InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 4,
                       ),
-                      labelText: 'Пол',
-                      border: OutlineInputBorder(
+                      labelText: context.tr('person_info.gender'),
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                         borderSide: BorderSide(color: Colors.white, width: 1),
                       ),
@@ -210,13 +215,13 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedGender,
-                        hint: const Text('Выберите пол'),
+                        hint: Text(context.tr('person_info.select_gender')),
                         isExpanded: true,
-                        items: genders.map((String gender) {
+                        items: ['male', 'female'].map((String gender) {
                           return DropdownMenuItem<String>(
                             value: gender,
                             child: Text(
-                              gender,
+                              context.l10n.genderName(gender),
                               style: const TextStyle(
                                 fontFamily: 'Times New Roman',
                                 fontSize: 20,
@@ -237,15 +242,15 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
                   child: InputDecorator(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 4,
                       ),
-                      labelText: 'Роль',
-                      border: OutlineInputBorder(
+                      labelText: context.tr('person_info.role'),
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                         borderSide: BorderSide(color: Colors.white, width: 1),
                       ),
@@ -253,13 +258,13 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedRole,
-                        hint: const Text('Выберите роль'),
+                        hint: Text(context.tr('person_info.select_role')),
                         isExpanded: true,
                         items: roles.map((String role) {
                           return DropdownMenuItem<String>(
                             value: role,
                             child: Text(
-                              role,
+                              context.l10n.roleName(role),
                               style: const TextStyle(
                                 fontFamily: 'Times New Roman',
                                 fontSize: 20,
@@ -288,14 +293,14 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                       fontWeight: FontWeight.normal,
                       color: Color(0xffFF9E74),
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: EdgeInsets.all(10),
-                      labelText: "Введите адрес",
-                      prefixIcon: SizedBox(
+                      labelText: context.tr('person_info.address'),
+                      prefixIcon: const SizedBox(
                           width: 50, child: Icon(Icons.home_filled)),
-                      border: OutlineInputBorder(
+                      border: const OutlineInputBorder(
                         borderRadius: BorderRadius.all(Radius.circular(20)),
                         borderSide: BorderSide(color: Colors.white, width: 1),
                       ),
@@ -314,9 +319,9 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                         //submitRegister();
                         register();
                       },
-                      child: const Text(
-                        'Сохраните информацию',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr('person_info.save'),
+                        style: const TextStyle(
                           fontFamily: 'Times New Roman',
                           fontSize: 22,
                           fontWeight: FontWeight.bold,

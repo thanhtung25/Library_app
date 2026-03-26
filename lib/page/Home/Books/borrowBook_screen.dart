@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
 import 'package:library_app/bloc/reservation/state.dart';
@@ -69,11 +70,11 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
   }
 
   String _badgeLabel(ReservationModel r) {
-    if (_isOverdue(r))                            return 'Просрочено';
+    if (_isOverdue(r))                            return context.tr('borrowed.status.overdue');
     switch (r.status.toLowerCase()) {
-      case 'approved': return 'Одобрено';
-      case 'returned': return 'Возвращено';
-      default:         return 'Ожидание';
+      case 'approved': return context.tr('borrowed.status.approved');
+      case 'returned': return context.tr('borrowed.status.returned');
+      default:         return context.tr('borrowed.status.pending');
     }
   }
 
@@ -109,12 +110,12 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Ваш список книг', style: TextStyle(
+                Text(context.tr('borrowed.title'), style: const TextStyle(
                   fontSize: 22, fontWeight: FontWeight.w800,
                   color: _textDark, fontFamily: 'Nunito',
                 )),
                 const SizedBox(height: 2),
-                Text('Управление взятыми книгами',
+                Text(context.tr('borrowed.subtitle'),
                     style: TextStyle(fontSize: 12, color: Colors.brown.shade400)),
               ]),
             ),
@@ -123,11 +124,11 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
               child: Row(children: [
-                Text('Сортировка списка',
+                Text(context.tr('borrowed.sorting'),
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                 const SizedBox(width: 10),
                 _SortChip(
-                  label: 'Книга',
+                  label: context.tr('borrowed.sort_book'),
                   selected: _sortField == _SortField.name,
                   ascending: _sortDir == _SortDir.asc,
                   onTap: () => setState(() {
@@ -138,7 +139,7 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
                 ),
                 const SizedBox(width: 8),
                 _SortChip(
-                  label: 'Дата возврата',
+                  label: context.tr('borrowed.sort_return_date'),
                   selected: _sortField == _SortField.returnDate,
                   ascending: _sortDir == _SortDir.asc,
                   onTap: () => setState(() {
@@ -158,15 +159,30 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
                 color: _orange,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
               ),
-              child: const Row(children: [
-                Expanded(flex: 3, child: Text('Книга',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13))),
-                Expanded(flex: 2, child: Text('Дата выдачи',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                    textAlign: TextAlign.center)),
-                Expanded(flex: 2, child: Text('Дата возврата',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
-                    textAlign: TextAlign.center)),
+              child: Row(children: [
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    context.tr('borrowed.column_book'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    context.tr('borrowed.column_issue_date'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    context.tr('borrowed.column_return_date'),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ]),
             ),
 
@@ -221,7 +237,7 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
                   child: Center(child: Column(children: [
                     Icon(Icons.inbox_rounded, size: 60, color: Colors.grey.shade300),
                     const SizedBox(height: 10),
-                    Text('Нет взятых книг',
+                    Text(context.tr('borrowed.empty'),
                         style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
                   ])),
                 )
@@ -244,7 +260,11 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
                           Expanded(flex: 3, child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(book?.title ?? 'Книга #${r.id_book}',
+                              Text(
+                                  book?.title ?? context.tr(
+                                    'borrowed.book_fallback',
+                                    params: {'id': '${r.id_book}'},
+                                  ),
                                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark),
                                   maxLines: 2, overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 4),

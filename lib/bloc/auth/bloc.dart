@@ -17,8 +17,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final username = event.username.trim();
     final password = event.password.trim();
     if (username.isEmpty || password.isEmpty) {
-      emit(AuthError(
-          "Пожалуйста, введите ваше полное имя пользователя и пароль."));
+      emit(AuthError('auth.error.login_empty'));
       return;
     }
     emit(AuthLoading());
@@ -26,13 +25,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await authService.login(username, password);
 
       if (response.user == null) {
-        emit(AuthError("Неверное имя пользователя или пароль."));
+        emit(AuthError('auth.error.invalid_credentials'));
         return;
       }
 
       emit(AuthSuccess(response.user!));
     } catch (e) {
-      emit(AuthError("Неверное имя пользователя или пароль."));
+      emit(AuthError('auth.error.invalid_credentials'));
     }
   }
 
@@ -63,7 +62,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         status.isEmpty ||
         libraryCard.isEmpty ||
         address.isEmpty) {
-      emit(AuthError("Пожалуйста, заполните все обязательные поля."));
+      emit(AuthError('auth.error.register_required'));
       return;
     }
     emit(AuthLoading());
@@ -101,21 +100,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final msg = e.toString().toLowerCase();
 
     if (msg.contains("username already exists")) {
-      return "Имя пользователя уже существует";
+      return 'auth.error.username_exists';
     }
 
     if (msg.contains("already exists")) {
-      return "Имя пользователя уже существует";
+      return 'auth.error.username_exists';
     }
 
     if (msg.contains("unique") || msg.contains("constraint")) {
-      return "Имя пользователя уже существует";
+      return 'auth.error.username_exists';
     }
 
     if (msg.contains("email")) {
-      return "Email уже используется";
+      return 'auth.error.email_exists';
     }
 
-    return "Ошибка регистрации";
+    return 'auth.error.register_failed';
   }
 }

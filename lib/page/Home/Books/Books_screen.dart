@@ -6,6 +6,7 @@ import 'package:library_app/bloc/book/state.dart';
 import 'package:library_app/bloc/category/bloc.dart';
 import 'package:library_app/bloc/category/event.dart';
 import 'package:library_app/bloc/category/state.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
 import 'package:library_app/bloc/reservation/state.dart';
@@ -126,8 +127,8 @@ class _BooksScreenState extends State<BooksScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text(
-              'Каталог книг',
+            Text(
+              context.tr('books.catalog_title'),
               style: TextStyle(
                 fontSize: 22, fontWeight: FontWeight.w800,
                 color: _textDark, fontFamily: 'Nunito',
@@ -135,7 +136,7 @@ class _BooksScreenState extends State<BooksScreen> {
             ),
             const SizedBox(height: 2),
             Text(
-              'Найдите книги, которые вам нравятся',
+              context.tr('books.catalog_subtitle'),
               style: TextStyle(fontSize: 12, color: Colors.brown.shade400),
             ),
           ]),
@@ -210,7 +211,7 @@ class _BooksScreenState extends State<BooksScreen> {
               controller: _searchCtrl,
               style: const TextStyle(fontSize: 14, color: _textDark),
               decoration: InputDecoration(
-                hintText: 'Поиск по названию книги...',
+                hintText: context.tr('books.search_hint'),
                 hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
@@ -253,7 +254,7 @@ class _BooksScreenState extends State<BooksScreen> {
       child: Wrap(spacing: 8, runSpacing: 6, children: [
         if (_filterLanguage.isNotEmpty)
           _removableChip(
-            '🌐 $_filterLanguage',
+            '🌐 ${context.l10n.bookLanguageName(_filterLanguage)}',
                 () => setState(() => _filterLanguage = ''),
           ),
         if (_filterYear != null)
@@ -294,7 +295,7 @@ class _BooksScreenState extends State<BooksScreen> {
       padding: const EdgeInsets.only(top: 12, bottom: 6),
       child: BlocBuilder<CategoryBloc, CategoryState>(
         builder: (context, state) {
-          final cats = <String>['Все'];
+          final cats = <String>[context.tr('home.all')];
           if (state is CategorySuccess) {
             cats.addAll(state.category.map((c) => c.name));
           }
@@ -439,7 +440,8 @@ class _BooksScreenState extends State<BooksScreen> {
                       fontSize: 17, fontWeight: FontWeight.w700, color: _textDark,
                     )),
                   ]),
-                  Text('${books.length} книг',
+                  Text(
+                      context.tr('books.count', params: {'count': '${books.length}'}),
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
                 ],
               ),
@@ -495,11 +497,20 @@ class _BooksScreenState extends State<BooksScreen> {
     // Заголовок результата
     String subtitle;
     if (_searchQuery.isNotEmpty) {
-      subtitle = '${books.length} результатов по запросу "$_searchQuery"';
+      subtitle = context.tr(
+        'books.search_results_query',
+        params: {'count': '${books.length}', 'query': _searchQuery},
+      );
     } else if (_selectedCatIdx > 0) {
-      subtitle = '${books.length} книг в категории "$_selectedCatName"';
+      subtitle = context.tr(
+        'books.search_results_category',
+        params: {'count': '${books.length}', 'category': _selectedCatName},
+      );
     } else {
-      subtitle = '${books.length} книг найдено';
+      subtitle = context.tr(
+        'books.search_results_default',
+        params: {'count': '${books.length}'},
+      );
     }
 
     if (books.isEmpty) {
@@ -508,8 +519,11 @@ class _BooksScreenState extends State<BooksScreen> {
         const SizedBox(height: 14),
         Text(
           _searchQuery.isNotEmpty
-              ? 'Книги не найдены\n"$_searchQuery"'
-              : 'Книги не найдены\nпо заданным фильтрам',
+              ? context.tr(
+                  'books.not_found_query',
+                  params: {'query': _searchQuery},
+                )
+              : context.tr('books.not_found_filters'),
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey.shade400, fontSize: 14, height: 1.5),
         ),
@@ -583,20 +597,22 @@ class _BooksScreenState extends State<BooksScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Фильтры', style: TextStyle(
+                    Text(context.tr('books.filter_title'), style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800, color: _textDark,
                     )),
                     TextButton(
                       onPressed: () => setSheet(() { tempLang = ''; tempYear = null; }),
-                      child: const Text('Сбросить всё',
-                          style: TextStyle(color: _orange, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        context.tr('books.reset_all'),
+                        style: const TextStyle(color: _orange, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
                 // ── ЯЗЫК ──────────────────────────────
-                const Text('Язык', style: TextStyle(
+                Text(context.tr('books.filter_language'), style: const TextStyle(
                   fontSize: 15, fontWeight: FontWeight.w700, color: _textDark,
                 )),
                 const SizedBox(height: 10),
@@ -604,9 +620,13 @@ class _BooksScreenState extends State<BooksScreen> {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Row(children: [
-                    _sheetChip('Все языки', tempLang.isEmpty, () => setSheet(() => tempLang = '')),
+                    _sheetChip(
+                      context.tr('books.filter_all_languages'),
+                      tempLang.isEmpty,
+                      () => setSheet(() => tempLang = ''),
+                    ),
                     ..._languages.map((lang) => _sheetChip(
-                      lang, tempLang == lang,
+                      context.l10n.bookLanguageName(lang), tempLang == lang,
                           () => setSheet(() => tempLang = lang),
                     )),
                   ]),
@@ -614,7 +634,7 @@ class _BooksScreenState extends State<BooksScreen> {
                 const SizedBox(height: 22),
 
                 // ── ГОД ИЗДАНИЯ ───────────────────────
-                const Text('Год издания', style: TextStyle(
+                Text(context.tr('books.filter_year'), style: const TextStyle(
                   fontSize: 15, fontWeight: FontWeight.w700, color: _textDark,
                 )),
                 const SizedBox(height: 10),
@@ -622,7 +642,11 @@ class _BooksScreenState extends State<BooksScreen> {
                   scrollDirection: Axis.horizontal,
                   physics: const BouncingScrollPhysics(),
                   child: Row(children: [
-                    _sheetChip('Все годы', tempYear == null, () => setSheet(() => tempYear = null)),
+                    _sheetChip(
+                      context.tr('books.filter_all_years'),
+                      tempYear == null,
+                      () => setSheet(() => tempYear = null),
+                    ),
                     ..._years.map((year) => _sheetChip(
                       '$year', tempYear == year,
                           () => setSheet(() => tempYear = year),
@@ -651,8 +675,10 @@ class _BooksScreenState extends State<BooksScreen> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text('Применить',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      context.tr('books.apply'),
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ],
@@ -757,7 +783,7 @@ class _SearchItem extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Wrap(spacing: 6, runSpacing: 4, children: [
-              _chip(book.language.toUpperCase(), Icons.language_rounded),
+              _chip(context.l10n.bookLanguageName(book.language).toUpperCase(), Icons.language_rounded),
               _chip('${book.publish_year}',      Icons.calendar_today_rounded),
             ]),
           ])),

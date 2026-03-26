@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:library_app/page/Home/Books/Books_screen.dart';
 import 'package:library_app/page/Home/Books/borrowBook_screen.dart';
@@ -18,13 +17,15 @@ class HomeScreen extends StatefulWidget {
 class _MainHomePageState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  late final List<Widget> _tabs;
+  void onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
-  @override
-  void initState() {
-    super.initState();
-    _tabs = [
-      HomeTab(user: widget.user,onChangeTab: onTabTapped,),
+  List<Widget> _buildTabs() {
+    return [
+      HomeTab(user: widget.user, onChangeTab: onTabTapped),
       BooksScreen(user: widget.user),
       BorrowbookScreen(user: widget.user),
       FavoriteScreen(user: widget.user),
@@ -32,22 +33,18 @@ class _MainHomePageState extends State<HomeScreen> {
     ];
   }
 
-  void onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final tabs = _buildTabs();
+
     return Scaffold(
       extendBody: true, // Để fab và bar nổi lên trên nền page
-      body: _tabs.elementAt(_currentIndex),
+      body: tabs.elementAt(_currentIndex),
       bottomNavigationBar: ClipRRect(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         child: BottomAppBar(
           elevation: 12,
-          color:  Colors.white,
+          color: Colors.white,
           shape: const CircularNotchedRectangle(),
           notchMargin: 10,
           child: SizedBox(
@@ -93,24 +90,21 @@ class _NavBarIcon extends StatelessWidget {
   final IconData icon;
   final bool selected;
   final VoidCallback onTap;
-  const _NavBarIcon(
-      {required this.icon, required this.selected, required this.onTap, super.key});
+  const _NavBarIcon({
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(icon, color: selected ? Color(0xffFF9E74) : Colors.grey, size: 28),
+      icon: Icon(
+        icon,
+        color: selected ? Color(0xffFF9E74) : Colors.grey,
+        size: 28,
+      ),
       onPressed: onTap,
       splashRadius: 26,
     );
   }
 }
-
-
-
-
-
-
-
-
-
-

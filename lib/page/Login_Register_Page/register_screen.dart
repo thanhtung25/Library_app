@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
 
 import '../../model/user_model.dart';
@@ -43,20 +43,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: <Widget>[
               const SizedBox(height: 20,),
-              const Text(
-                'Добро пожаловать в библиотеку',
+              Text(
+                context.tr('register.welcome'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Times New Roman',
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
                   color: Color(0xffFF715D),
                 ),
               ),
-              const Text(
-                'Зарегистрируйтесь в библиотеке в несколько простых шагов. ',
+              Text(
+                context.tr('register.subtitle'),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'Times New Roman',
                   fontSize: 20,
                   fontWeight: FontWeight.normal,
@@ -80,7 +80,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding:const EdgeInsets.all(10),
-                      labelText: "User Name",
+                      labelText: context.tr('login.username_label'),
                       prefixIcon:const SizedBox(
                         width: 50,child: Icon(Icons.person),
                       ),
@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding:const EdgeInsets.all(10),
-                      labelText: "Phone Number",
+                      labelText: context.tr('register.phone_label'),
                       prefixIcon:const SizedBox(
                         width: 50,child: Icon(Icons.phone),
                       ),
@@ -134,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: const EdgeInsets.all(10),
-                      labelText: "Email",
+                      labelText: context.tr('profile.email'),
                       prefixIcon:const SizedBox(
                         width: 50,child: Icon(Icons.mail),
                       ),
@@ -161,7 +161,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding:const EdgeInsets.all(10),
-                      labelText: "Password",
+                      labelText: context.tr('login.password_label'),
                       prefixIcon:const SizedBox(
                         width: 50,child: Icon(Icons.vpn_key),
                       ),
@@ -204,9 +204,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         );
                       },
-                      child:const Text(
-                        'Регистратор',
-                        style: TextStyle(
+                      child: Text(
+                        context.tr('register.submit'),
+                        style: const TextStyle(
                           fontFamily: 'Times New Roman',
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -219,7 +219,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
               RichText(
                 text:  TextSpan(
-                    text: 'Уже пользователь?',
+                    text: context.tr('register.existing_user'),
                     style: const TextStyle(
                         fontFamily: 'Times New Roman',
                         fontSize: 16,
@@ -228,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     children: <TextSpan>[
                       TextSpan(
                           recognizer: TapGestureRecognizer()..onTap =() => Navigator.pushNamed(context, '/login'),
-                          text: 'Войти сейчас',
+                          text: context.tr('register.login_now'),
                           style:const TextStyle(
                             color: Color(0xff3277D8),
                             fontFamily: 'Times New Roman',

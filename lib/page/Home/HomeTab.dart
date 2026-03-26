@@ -7,6 +7,7 @@ import 'package:library_app/bloc/category/event.dart';
 import 'package:library_app/bloc/category/state.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
+import 'package:library_app/localization/app_localizations.dart';
 
 import '../../api_localhost/AuthService.dart';
 import '../../api_localhost/BookService.dart';
@@ -104,7 +105,10 @@ class _HomeTabState extends State<HomeTab> {
               builder: (context, snap) {
                 final name = snap.hasData ? snap.data!.fullName : '...';
                 return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Привет 👋', style: TextStyle(color: Colors.white70, fontSize: 20)),
+                  Text(
+                    context.tr('home.greeting'),
+                    style: const TextStyle(color: Colors.white70, fontSize: 20),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     name,
@@ -164,7 +168,7 @@ class _HomeTabState extends State<HomeTab> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Поиск книг, авторов...',
+                context.tr('home.search_hint'),
                 style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
               ),
             ),
@@ -202,13 +206,17 @@ class _HomeTabState extends State<HomeTab> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text(
-                'Молодежная библиотека',
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              Text(
+                context.tr('home.banner_title'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Тысячи замечательных книг ждут, когда вы их откроете для себя!',
+                context.tr('home.banner_subtitle'),
                 style: TextStyle(color: Colors.white.withOpacity(0.82), fontSize: 12, height: 1.45),
               ),
               const SizedBox(height: 14),
@@ -217,9 +225,13 @@ class _HomeTabState extends State<HomeTab> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                  child: const Text(
-                    'Узнайте больше прямо сейчас →',
-                    style: TextStyle(color: Color(0xff5C35D9), fontWeight: FontWeight.w700, fontSize: 12),
+                  child: Text(
+                    context.tr('home.banner_action'),
+                    style: const TextStyle(
+                      color: Color(0xff5C35D9),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ),
@@ -240,16 +252,19 @@ class _HomeTabState extends State<HomeTab> {
   // ═══════════════════════════════════════════════════════
   Widget _quickActions() {
     final items = [
-      _Action(Icons.book_rounded,               'Выдача книги',  const Color(0xffFF9E74), 2),
-      _Action(Icons.assignment_return_rounded,  'Возврат книги',   const Color(0xff74B9FF), 3),
-      _Action(Icons.bookmark_add_rounded,       'Бронировать',  const Color(0xff00CBA0), 1),
-      _Action(Icons.history_rounded,            'Любимый',    const Color(0xffFDCB6E), 3),
+      _Action(Icons.book_rounded, context.tr('home.action.borrow'), const Color(0xffFF9E74), 2),
+      _Action(Icons.assignment_return_rounded, context.tr('home.action.return'), const Color(0xff74B9FF), 3),
+      _Action(Icons.bookmark_add_rounded, context.tr('home.action.reserve'), const Color(0xff00CBA0), 1),
+      _Action(Icons.history_rounded, context.tr('home.action.favorite'), const Color(0xffFDCB6E), 3),
     ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Функции', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+        Text(
+          context.tr('home.quick_actions'),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark),
+        ),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -269,14 +284,17 @@ class _HomeTabState extends State<HomeTab> {
     return Padding(
       padding: const EdgeInsets.only(top: 26),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Text('Категория', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+          child: Text(
+            context.tr('home.categories'),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark),
+          ),
         ),
         const SizedBox(height: 14),
         BlocBuilder<CategoryBloc, CategoryState>(
           builder: (context, state) {
-            final cats = <String>['Все'];
+            final cats = <String>[context.tr('home.all')];
             if (state is CategorySuccess) {
               cats.addAll(state.category.map((c) => c.name));
             }
@@ -342,10 +360,16 @@ class _HomeTabState extends State<HomeTab> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Предложения для вас', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark)),
+              Text(
+                context.tr('home.suggestions'),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: _textDark),
+              ),
               GestureDetector(
                 onTap: () => widget.onChangeTab(1),
-                child: const Text('Посмотреть все →', style: TextStyle(color: _orange, fontSize: 13, fontWeight: FontWeight.w600)),
+                child: Text(
+                  context.tr('home.see_all'),
+                  style: const TextStyle(color: _orange, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
@@ -381,9 +405,14 @@ class _HomeTabState extends State<HomeTab> {
             }
 
             if (books.isEmpty) {
-              return const Padding(
+              return Padding(
                 padding: EdgeInsets.symmetric(vertical: 48),
-                child: Center(child: Text('Книг нет.', style: TextStyle(color: Colors.grey))),
+                child: Center(
+                  child: Text(
+                    context.tr('home.no_books'),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
               );
             }
 
