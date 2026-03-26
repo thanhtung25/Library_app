@@ -282,6 +282,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ═══════════════════════════════════════════════════════
+
   // CATEGORY CHIPS
   // ═══════════════════════════════════════════════════════
   Widget _categorySection() {
@@ -382,19 +383,27 @@ class _HomeTabState extends State<HomeTab> {
         // ── Lắng nghe đồng thời BookBloc + BookCopyBloc ──
         BlocBuilder<BookCopyBloc, BookCopyState>(
           builder: (context, copyState) {
-            // Lấy map bookCopy theo id_book từ BookCopyBloc
-            // Ưu tiên BookCopyByIdBookSuccess, fallback BookCopySuccess
             final Map<int, BookCopyModel> copyByBook = {};
 
             if (copyState is BookCopyByIdBookSuccess) {
-              // map: id_book → first BookCopyModel
+              // Ưu tiên bản sao 'available', fallback về first
               copyState.bookCopybyIdBook.forEach((idBook, list) {
-                if (list.isNotEmpty) copyByBook[idBook] = list.first;
+                if (list.isNotEmpty) {
+                  copyByBook[idBook] = list.firstWhere(
+                        (c) => c.status == 'available',
+                    orElse: () => list.first,
+                  );
+                }
               });
             } else if (copyState is BookCopySuccess) {
-              // Từ danh sách allBookCopy, lấy bản copy đầu tiên cho mỗi id_book
+              // Ưu tiên bản sao 'available' cho mỗi id_book
               for (final copy in copyState.bookCopies) {
-                copyByBook.putIfAbsent(copy.id_book, () => copy);
+                if (!copyByBook.containsKey(copy.id_book)) {
+                  copyByBook[copy.id_book] = copy;
+                } else if (copy.status == 'available' &&
+                    copyByBook[copy.id_book]!.status != 'available') {
+                  copyByBook[copy.id_book] = copy;
+                }
               }
             }
 

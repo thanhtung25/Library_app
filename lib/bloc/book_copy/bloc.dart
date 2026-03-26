@@ -35,10 +35,10 @@ class BookCopyBloc extends Bloc<BookCopyEvent, BookCopyState> {
     // Không emit Loading để tránh reset toàn bộ UI khi lazy-load từng cuốn
     try {
       // API trả về một BookCopyModel đơn lẻ → bọc vào List
-      final BookCopyModel bookCopy =
+      final List<BookCopyModel> copies =
       await bookCopyService.getBookCopyByIdBook(event.id_book);
 
-      _booksByIdBook[event.id_book] = [bookCopy];
+      _booksByIdBook[event.id_book] = copies;
 
       emit(BookCopyByIdBookSuccess(
         Map.from(_booksByIdBook),

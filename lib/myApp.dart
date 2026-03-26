@@ -17,7 +17,9 @@ import 'package:library_app/localization/locale_controller.dart';
 import 'Router/AppRouter.dart';
 import 'Router/AppRoutes.dart';
 import 'api_localhost/AuthService.dart';
+import 'api_localhost/LoanService.dart';
 import 'api_localhost/reservation_service.dart';
+import 'bloc/loan/bloc.dart';
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
@@ -33,7 +35,7 @@ class _MyAppState extends State<MyApp> {
   final ReservationService reservationService = ReservationService();
   final FavoriteService favoriteService = FavoriteService();
   final BookCopyService bookCopyService = BookCopyService();
-
+  final LoanService loanService = LoanService();
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -59,6 +61,7 @@ class _MyAppState extends State<MyApp> {
             BlocProvider(
             create: (_) => BookCopyBloc(bookCopyService),
             ),
+            BlocProvider(create: (_) => LoanBloc(loanService)),
           ],
           child: MaterialApp(
             title: 'Library Management App',

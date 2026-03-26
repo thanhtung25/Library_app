@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:library_app/localization/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/model/user_model.dart';
 import '../../../Router/AppRoutes.dart';
@@ -186,13 +185,13 @@ class BookCard extends StatelessWidget {
                   future: authorFuture,
                   builder: (context, asyncSnapshot) {
                     if (asyncSnapshot.connectionState == ConnectionState.waiting) {
-                      return Text(context.tr('common.loading'));
+                      return const Text("Đang tải...");
                     }
                     if (asyncSnapshot.hasError) {
-                      return Text(context.tr('common.author_error'));
+                      return const Text("Lỗi tác giả");
                     }
                     if (!asyncSnapshot.hasData) {
-                      return Text(context.tr('common.author_unavailable'));
+                      return const Text("Không có tác giả");
                     }
                     return Text(
                       asyncSnapshot.data!.full_name,
@@ -208,25 +207,69 @@ class BookCard extends StatelessWidget {
               ),
             ),
 
-            // ── status badge ─────────────────────────────────
+            // ── status badge (có màu) ────────────────────────
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+              padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
               child: SizedBox(
                 width: 180,
-                child: Text(
-                  bookCopy.status,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: _StatusBadge(status: bookCopy.status),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════
+// Badge trạng thái bản sao — có màu theo status
+// ════════════════════════════════════════════════════
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  Color get _color {
+    switch (status) {
+      case 'available': return Colors.green;
+      case 'borrowed':  return Colors.red;
+      case 'reserved':  return Colors.orange;
+      default:          return Colors.grey;
+    }
+  }
+
+  String get _label {
+    switch (status) {
+      case 'available': return 'Доступный';
+      case 'borrowed':  return 'Заимствованный';
+      case 'reserved':  return 'Заказ размещен';
+      default:          return 'Не определено';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: _color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _color.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 7, color: _color),
+          const SizedBox(width: 5),
+          Text(
+            _label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: _color,
+            ),
+          ),
+        ],
       ),
     );
   }

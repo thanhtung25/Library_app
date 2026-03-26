@@ -119,17 +119,32 @@ class _BooksScreenState extends State<BooksScreen> {
   // ── Helper: build copyByBook map từ state ────────
   Map<int, BookCopyModel> _buildCopyMap(BookCopyState copyState) {
     final Map<int, BookCopyModel> copyByBook = {};
+
     if (copyState is BookCopyByIdBookSuccess) {
+      // Ưu tiên bản sao 'available', fallback về first
       copyState.bookCopybyIdBook.forEach((idBook, list) {
-        if (list.isNotEmpty) copyByBook[idBook] = list.first;
+        if (list.isNotEmpty) {
+          copyByBook[idBook] = list.firstWhere(
+                (c) => c.status == 'available',
+            orElse: () => list.first,
+          );
+        }
       });
     } else if (copyState is BookCopySuccess) {
+      // Ưu tiên bản sao 'available' cho mỗi id_book
       for (final copy in copyState.bookCopies) {
-        copyByBook.putIfAbsent(copy.id_book, () => copy);
+        if (!copyByBook.containsKey(copy.id_book)) {
+          copyByBook[copy.id_book] = copy;
+        } else if (copy.status == 'available' &&
+            copyByBook[copy.id_book]!.status != 'available') {
+          copyByBook[copy.id_book] = copy;
+        }
       }
     }
+
     return copyByBook;
   }
+
 
   // ── Helper: lấy BookCopyModel, tự dispatch nếu chưa có ──
   BookCopyModel _getCopy(
