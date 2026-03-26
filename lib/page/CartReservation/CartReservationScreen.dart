@@ -10,8 +10,11 @@ import 'package:library_app/model/reservations_model.dart';
 import 'package:library_app/model/user_model.dart';
 
 import '../../api_localhost/ApiService.dart';
+import '../../api_localhost/BookCopyService.dart';
+import '../../api_localhost/LoanService.dart';
 import '../../bloc/loan/bloc.dart';
 import '../../bloc/loan/event.dart';
+import '../../model/book_copy_model.dart';
 import '../../model/loan_model.dart';
 import 'cart_helpers.dart';
 import 'widgets/cart_book_card.dart';
@@ -46,6 +49,9 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
   bool isLoadingBooks = false;
   bool _booksLoadedOnce = false;
   bool isSubmitting = false;
+  // ── Services ──────────────────────────────────────────
+  final _bookCopyService = BookCopyService();
+  final _loanService = LoanService();
 
   // ── Lifecycle ─────────────────────────────────────────
   @override
@@ -192,50 +198,113 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
       return;
     }
 
-    ///_submitLoans();
+    _submitLoans();
   }
-  //
-  // Future<void> _submitLoans() async {
-  //   setState(() => isSubmitting = true);
-  //   try {
-  //     final loanBloc = context.read<LoanBloc>();
-  //     for (final reservation in currentReservations) {
-  //       loanBloc.add(
-  //         CreateLoanEvent(
-  //           LoanModel(
-  //             id_reservation: reservation.id_reservation,
-  //             delivery_method: deliveryMethod,
-  //             address: deliveryMethod == 'delivery'
-  //                 ? _addressCtrl.text.trim()
-  //                 : null,
-  //             phone: deliveryMethod == 'delivery'
-  //                 ? _phoneCtrl.text.trim()
-  //                 : null,
-  //             pickup_date: deliveryMethod == 'pickup' ? selectedDate : null,
-  //             pickup_time: deliveryMethod == 'pickup' ? selectedTime : null,
-  //             note: _noteCtrl.text.trim(),
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //     if (!mounted) return;
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text(context.tr('cart.success'))),
-  //     );
-  //     Navigator.pop(context, true);
-  //   } catch (e) {
-  //     if (!mounted) return;
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text(
-  //           context.tr('cart.submit_error', params: {'error': '$e'}),
-  //         ),
-  //       ),
-  //     );
-  //   } finally {
-  //     if (mounted) setState(() => isSubmitting = false);
-  //   }
-  // }
+  Future<void> _submitLoans() async {
+    setState(() => isSubmitting = true);
+
+    final now = DateTime.now();
+    final returnDate = now.add(const Duration(days: 14));
+
+    try {
+      for (final reservation in List<ReservationModel>.from(currentReservations)) {
+        if (reservation.id_book == null) continue;
+
+        // 1. Lấy danh sách bản sao của sách
+        final List<BookCopyModel> copies =
+        await _bookCopyService.getBookCopyByIdBook(reservation.id_book!);
+
+        // 2. Tìm bản sao 'available'
+        final available = copies.where((c) => c.status == 'available').toList();
+        if (available.isEmpty) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Không còn bản sao sẵn sàng cho một trong các sách'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          setState(() => isSubmitting = false);
+          return;
+        }
+
+        final BookCopyModel copy = available.first;
+
+        // 3. Tạo loan (mượn sách)
+        await _loanService.addLoan(LoanModel(
+          id_user: widget.userModel.id_user,
+          id_copy: copy.id_copy!,
+          issue_date: now,
+          return_date: returnDate,
+          status: 'borrowed',
+        ));
+
+        // 4. Cập nhật trạng thái bản sao → 'borrowed'
+        await _bookCopyService.updateBookCopy(
+          copy.copyWith(status: 'borrowed'),
+        );
+
+        // 5. Xóa reservation khỏi rổ
+        if (reservation.id_reservation != null && mounted) {
+          context.read<ReservationBloc>().add(
+            DeleteReservationEvent(reservation.id_reservation!),
+          );
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => isSubmitting = false);
+
+      // ── Dialog thành công ──────────────────────────────
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+              SizedBox(width: 10),
+              Text('Thành công!'),
+            ],
+          ),
+          content: Text(
+            deliveryMethod == 'pickup'
+                ? 'Đã đăng ký mượn sách thành công.\n'
+                'Vui lòng đến thư viện vào '
+                '${formatPickupDate(selectedDate)} lúc $selectedTime.'
+                : 'Đã đặt và thanh toán thành công.\n'
+                'Sách sẽ được giao đến địa chỉ bạn đã cung cấp.',
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // đóng dialog
+                Navigator.pop(context); // quay lại màn hình trước
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xffFF9E74),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('OK', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void _showShippingDialog() {
     showDialog(
@@ -312,7 +381,7 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                   }
                   if (state is ReservationError && !_booksLoadedOnce) {
                     return Center(
-                      child: Text(state.error, textAlign: TextAlign.center),
+                      child: Text("В корзине нет книг."),
                     );
                   }
                   if (state is ReservationLoaded &&
