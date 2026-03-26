@@ -15,6 +15,10 @@ import 'package:library_app/model/user_model.dart';
 import '../../../Router/AppRoutes.dart';
 import '../../../api_localhost/ApiService.dart';
 import '../../../api_localhost/BookService.dart';
+import '../../../bloc/book_copy/bloc.dart';
+import '../../../bloc/book_copy/event.dart';
+import '../../../bloc/book_copy/state.dart';
+import '../../../model/book_copy_model.dart';
 import 'book_card.dart';
 
 class BooksScreen extends StatefulWidget {
@@ -31,26 +35,29 @@ class _BooksScreenState extends State<BooksScreen> {
   static const Color _textDark = Color(0xff3D2314);
 
   final TextEditingController _searchCtrl = TextEditingController();
-  String _searchQuery     = '';
-  int    _selectedCatIdx  = 0;
-  String _selectedCatName = '';
-  String _filterLanguage  = '';   // '' = все языки
-  int?   _filterYear;              // null = все годы
 
-  // Кэш всех книг для извлечения уникальных значений
+  // ── BookService instance ─────────────────────────────
+  final bookService _bookService = bookService();
+
+  // ── 3 bộ lọc ─────────────────────────────────────
+  String _searchQuery        = '';
+  int?   _filterCategory;
+  String _filterCategoryName = '';
+  String _filterLanguage     = '';
+  int?   _filterYear;
+
   List<BookModel> _cachedAllBooks = [];
 
   @override
   void initState() {
     super.initState();
     context.read<BookBloc>().add(GetBookEvent());
-    context.read<CategoryBloc>().add(GetCategoriesHasBookEvent());
-    context.read<ReservationBloc>().add(
-      GetReservationsByUserEvent(widget.user.id_user),
-    );
-    _searchCtrl.addListener(() {
-      setState(() => _searchQuery = _searchCtrl.text.trim());
-    });
+    context.read<CategoryBloc>().add(GetAllCategoryEvent());
+    context.read<ReservationBloc>()
+        .add(GetReservationsByUserEvent(widget.user.id_user));
+    context.read<BookCopyBloc>().add(GetBookCopyEvent());
+    _searchCtrl.addListener(
+            () => setState(() => _searchQuery = _searchCtrl.text.trim()));
   }
 
   @override
@@ -59,7 +66,7 @@ class _BooksScreenState extends State<BooksScreen> {
     super.dispose();
   }
 
-  // ── Уникальные языки / годы из кэша ──────────────────
+  // ── Giá trị duy nhất cho picker ──────────────────
   List<String> get _languages => _cachedAllBooks
       .map((b) => b.language.trim())
       .where((l) => l.isNotEmpty)
@@ -72,18 +79,33 @@ class _BooksScreenState extends State<BooksScreen> {
       .where((y) => y > 0)
       .toSet()
       .toList()
-    ..sort((a, b) => b.compareTo(a));  // убывание
+    ..sort((a, b) => b.compareTo(a));
 
-  bool get _hasExtraFilter => _filterLanguage.isNotEmpty || _filterYear != null;
-  bool get _hasAnyFilter   =>
-      _searchQuery.isNotEmpty || _selectedCatIdx > 0 || _hasExtraFilter;
+  // ── Trạng thái filter ────────────────────────────
+  bool get _hasFilter =>
+      _searchQuery.isNotEmpty ||
+          _filterCategory != null ||
+          _filterLanguage.isNotEmpty ||
+          _filterYear != null;
 
-  // ── Применить все фильтры к списку ───────────────────
+  void _clearAllFilters() => setState(() {
+    _filterCategory     = null;
+    _filterCategoryName = '';
+    _filterLanguage     = '';
+    _filterYear         = null;
+    _searchCtrl.clear();
+    _searchQuery        = '';
+  });
+
+  // ── Áp dụng tất cả bộ lọc ───────────────────────
   List<BookModel> _applyFilters(List<BookModel> src) {
     var list = src;
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       list = list.where((b) => b.title.toLowerCase().contains(q)).toList();
+    }
+    if (_filterCategory != null) {
+      list = list.where((b) => b.id_category == _filterCategory).toList();
     }
     if (_filterLanguage.isNotEmpty) {
       list = list.where((b) => b.language.trim() == _filterLanguage).toList();
@@ -92,6 +114,34 @@ class _BooksScreenState extends State<BooksScreen> {
       list = list.where((b) => b.publish_year == _filterYear).toList();
     }
     return list;
+  }
+
+  // ── Helper: build copyByBook map từ state ────────
+  Map<int, BookCopyModel> _buildCopyMap(BookCopyState copyState) {
+    final Map<int, BookCopyModel> copyByBook = {};
+    if (copyState is BookCopyByIdBookSuccess) {
+      copyState.bookCopybyIdBook.forEach((idBook, list) {
+        if (list.isNotEmpty) copyByBook[idBook] = list.first;
+      });
+    } else if (copyState is BookCopySuccess) {
+      for (final copy in copyState.bookCopies) {
+        copyByBook.putIfAbsent(copy.id_book, () => copy);
+      }
+    }
+    return copyByBook;
+  }
+
+  // ── Helper: lấy BookCopyModel, tự dispatch nếu chưa có ──
+  BookCopyModel _getCopy(
+      BuildContext context,
+      int idBook,
+      Map<int, BookCopyModel> copyByBook,
+      ) {
+    if (!copyByBook.containsKey(idBook)) {
+      context.read<BookCopyBloc>().add(GetBookByIdBookEvent(id_book: idBook));
+    }
+    return copyByBook[idBook] ??
+        BookCopyModel(id_book: idBook, barcode: '', status: 'unknown');
   }
 
   // ════════════════════════════════════════════════════
@@ -107,8 +157,9 @@ class _BooksScreenState extends State<BooksScreen> {
           children: [
             _topBar(),
             _searchBar(),
-            if (_hasExtraFilter) _activeFilterChips(),
-            _categoryChips(),
+            const SizedBox(height: 10),
+            _filterChipRow(),
+            if (_hasFilter) _activeTagRow(),
             const SizedBox(height: 4),
             Expanded(child: _content()),
           ],
@@ -139,17 +190,15 @@ class _BooksScreenState extends State<BooksScreen> {
               context.tr('books.catalog_subtitle'),
               style: TextStyle(fontSize: 12, color: Colors.brown.shade400),
             ),
-          ]),
 
-          // Корзина с бейджем
+          ]),
           BlocBuilder<ReservationBloc, ReservationState>(
             builder: (context, state) {
               int count = 0;
               if (state is ReservationLoaded) count = state.reservations.length;
               return GestureDetector(
                 onTap: () => Navigator.pushNamed(
-                  context, AppRoutes.cardRecervation, arguments: widget.user,
-                ),
+                    context, AppRoutes.cardRecervation, arguments: widget.user),
                 child: Stack(clipBehavior: Clip.none, children: [
                   Container(
                     width: 46, height: 46,
@@ -161,7 +210,8 @@ class _BooksScreenState extends State<BooksScreen> {
                         blurRadius: 8, offset: const Offset(0, 3),
                       )],
                     ),
-                    child: const Icon(Icons.shopping_bag_outlined, color: _orange, size: 22),
+                    child: const Icon(Icons.shopping_bag_outlined,
+                        color: _orange, size: 22),
                   ),
                   if (count > 0)
                     Positioned(
@@ -174,8 +224,8 @@ class _BooksScreenState extends State<BooksScreen> {
                           border: Border.all(color: Colors.white, width: 1.5),
                         ),
                         child: Text('$count', style: const TextStyle(
-                          color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold,
-                        )),
+                            color: Colors.white, fontSize: 10,
+                            fontWeight: FontWeight.bold)),
                       ),
                     ),
                 ]),
@@ -188,7 +238,7 @@ class _BooksScreenState extends State<BooksScreen> {
   }
 
   // ════════════════════════════════════════════════════
-  // SEARCH BAR  (кнопка фильтра открывает bottom sheet)
+  // SEARCH BAR
   // ════════════════════════════════════════════════════
   Widget _searchBar() {
     return Padding(
@@ -221,63 +271,158 @@ class _BooksScreenState extends State<BooksScreen> {
           if (_searchQuery.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.close_rounded, color: Colors.grey, size: 20),
-              onPressed: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+              onPressed: () {
+                _searchCtrl.clear();
+                setState(() => _searchQuery = '');
+              },
             ),
-          // ── Кнопка фильтра ──
-          GestureDetector(
-            onTap: () => _showFilterSheet(),
-            child: Container(
-              margin: const EdgeInsets.all(8),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _hasExtraFilter ? _orange : _orange.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.tune_rounded,
-                color: _hasExtraFilter ? Colors.white : _orange,
-                size: 18,
-              ),
-            ),
-          ),
         ]),
       ),
     );
   }
 
   // ════════════════════════════════════════════════════
-  // АКТИВНЫЕ ФИЛЬТРЫ (показывается под поиском)
+  // FILTER CHIP ROW
   // ════════════════════════════════════════════════════
-  Widget _activeFilterChips() {
+  Widget _filterChipRow() {
+    return BlocBuilder<CategoryBloc, CategoryState>(
+      builder: (context, catState) {
+        final categories = catState is CategorySuccess
+            ? catState.category.map((c) => c.name).toList()
+            : <String>[];
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              // ── 1. КАТЕГОРИЯ ──────────────────────
+              _FilterDropChip(
+                icon: Icons.category_rounded,
+                label: _filterCategory != null ? _filterCategoryName : 'Категория',
+                active: _filterCategory != null,
+                orange: _orange,
+                onTap: categories.isEmpty
+                    ? null
+                    : () => _showCategoryPickerSheet(catState as CategorySuccess),
+              ),
+              const SizedBox(width: 8),
+
+              // ── 2. ГОД ИЗДАНИЯ ────────────────────
+              _FilterDropChip(
+                icon: Icons.calendar_today_rounded,
+                label: _filterYear != null ? '$_filterYear' : 'Год',
+                active: _filterYear != null,
+                orange: _orange,
+                onTap: _cachedAllBooks.isEmpty
+                    ? null
+                    : () => _showPickerSheet(
+                  title: 'Год издания',
+                  icon: Icons.calendar_today_rounded,
+                  items: _years.map((y) => '$y').toList(),
+                  selected: _filterYear != null ? '$_filterYear' : '',
+                  allLabel: 'Все годы',
+                  onApply: (v) => setState(
+                          () => _filterYear = v.isEmpty ? null : int.tryParse(v)),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // ── 3. ЯЗЫК ───────────────────────────
+              _FilterDropChip(
+                icon: Icons.language_rounded,
+                label: _filterLanguage.isNotEmpty ? _filterLanguage : 'Язык',
+                active: _filterLanguage.isNotEmpty,
+                orange: _orange,
+                onTap: _cachedAllBooks.isEmpty
+                    ? null
+                    : () => _showPickerSheet(
+                  title: 'Язык',
+                  icon: Icons.language_rounded,
+                  items: _languages,
+                  selected: _filterLanguage,
+                  allLabel: 'Все языки',
+                  onApply: (v) => setState(() => _filterLanguage = v),
+                ),
+              ),
+
+              // ── 4. СБРОСИТЬ ──────────────────────
+              if (_filterCategory != null ||
+                  _filterLanguage.isNotEmpty ||
+                  _filterYear != null) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _filterCategory     = null;
+                    _filterCategoryName = '';
+                    _filterLanguage     = '';
+                    _filterYear         = null;
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(50),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.filter_alt_off_rounded,
+                          size: 14, color: Colors.red.shade400),
+                      const SizedBox(width: 4),
+                      Text('Сбросить',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.red.shade400,
+                              fontWeight: FontWeight.w600)),
+                    ]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ════════════════════════════════════════════════════
+  // ACTIVE TAG ROW
+  // ════════════════════════════════════════════════════
+  Widget _activeTagRow() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Wrap(spacing: 8, runSpacing: 6, children: [
+        if (_filterCategory != null)
+          _removeTag('📚 $_filterCategoryName',
+                  () => setState(() { _filterCategory = null; _filterCategoryName = ''; })),
         if (_filterLanguage.isNotEmpty)
-          _removableChip(
-            '🌐 ${context.l10n.bookLanguageName(_filterLanguage)}',
-                () => setState(() => _filterLanguage = ''),
-          ),
+          _removeTag('🌐 $_filterLanguage',
+                  () => setState(() => _filterLanguage = '')),
         if (_filterYear != null)
-          _removableChip(
-            '📅 $_filterYear',
-                () => setState(() => _filterYear = null),
-          ),
+          _removeTag('📅 $_filterYear',
+                  () => setState(() => _filterYear = null)),
+        if (_searchQuery.isNotEmpty)
+          _removeTag('🔍 "$_searchQuery"', () {
+            _searchCtrl.clear();
+            setState(() => _searchQuery = '');
+          }),
       ]),
     );
   }
 
-  Widget _removableChip(String label, VoidCallback onRemove) {
+  Widget _removeTag(String label, VoidCallback onRemove) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
       decoration: BoxDecoration(
-        color: _orange.withOpacity(0.15),
+        color: _orange.withOpacity(0.13),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _orange.withOpacity(0.4)),
+        border: Border.all(color: _orange.withOpacity(0.35)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text(label, style: const TextStyle(
-          fontSize: 12, color: _orange, fontWeight: FontWeight.w600,
-        )),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12, color: _orange, fontWeight: FontWeight.w600)),
         const SizedBox(width: 4),
         GestureDetector(
           onTap: onRemove,
@@ -286,62 +431,263 @@ class _BooksScreenState extends State<BooksScreen> {
       ]),
     );
   }
+  // ════════════════════════════════════════════════════
+  // BOTTOM SHEET — CATEGORY PICKER
+  // ════════════════════════════════════════════════════
+  void _showCategoryPickerSheet(CategorySuccess catState) {
+    int?   tempId   = _filterCategory;
+    String tempName = _filterCategoryName;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _orange.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.category_rounded,
+                          size: 18, color: _orange),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Категория', style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800,
+                      color: _textDark,
+                    )),
+                  ]),
+                  TextButton(
+                    onPressed: () =>
+                        setSheet(() { tempId = null; tempName = ''; }),
+                    child: const Text('Сбросить',
+                        style: TextStyle(
+                            color: _orange, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _pickerChip(
+                    label: 'Все категории',
+                    selected: tempId == null,
+                    onTap: () => setSheet(() { tempId = null; tempName = ''; }),
+                  ),
+                  ...catState.category.map((cat) => _pickerChip(
+                    label: cat.name,
+                    selected: tempId == cat.id_category,
+                    onTap: () => setSheet(() {
+                      tempId   = cat.id_category;
+                      tempName = cat.name;
+                    }),
+                  )),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _filterCategory     = tempId;
+                      _filterCategoryName = tempName;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Применить',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+
 
   // ════════════════════════════════════════════════════
-  // CATEGORY CHIPS
+  // BOTTOM SHEET PICKER — dùng chung cho Year & Language
   // ════════════════════════════════════════════════════
-  Widget _categoryChips() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 6),
-      child: BlocBuilder<CategoryBloc, CategoryState>(
-        builder: (context, state) {
-          final cats = <String>[context.tr('home.all')];
-          if (state is CategorySuccess) {
-            cats.addAll(state.category.map((c) => c.name));
-          }
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: List.generate(cats.length, (i) {
-                final sel = _selectedCatIdx == i;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedCatIdx  = i;
-                    _selectedCatName = i == 0 ? '' : cats[i];
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    margin: const EdgeInsets.only(right: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: sel ? _orange : Colors.white,
-                      borderRadius: BorderRadius.circular(50),
-                      boxShadow: [BoxShadow(
-                        color: sel ? _orange.withOpacity(0.35) : Colors.black.withOpacity(0.07),
-                        blurRadius: sel ? 10 : 6,
-                        offset: const Offset(0, 3),
-                      )],
-                    ),
-                    child: Text(cats[i], style: TextStyle(
-                      color: sel ? Colors.white : Colors.grey.shade600,
-                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 13,
-                    )),
+  void _showPickerSheet({
+    required String title,
+    required IconData icon,
+    required List<String> items,
+    required String selected,
+    required String allLabel,
+    required ValueChanged<String> onApply,
+  }) {
+    String temp = selected;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24, right: 24, top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                );
-              }),
-            ),
-          );
-        },
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _orange.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, size: 18, color: _orange),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(title, style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800, color: _textDark,
+                    )),
+                  ]),
+                  TextButton(
+                    onPressed: () => setSheet(() => temp = ''),
+                    child: const Text('Сбросить',
+                        style: TextStyle(
+                            color: _orange, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _pickerChip(
+                    label: allLabel,
+                    selected: temp.isEmpty,
+                    onTap: () => setSheet(() => temp = ''),
+                  ),
+                  ...items.map((item) => _pickerChip(
+                    label: item,
+                    selected: temp == item,
+                    onTap: () => setSheet(() => temp = item),
+                  )),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    onApply(temp);
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Применить',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pickerChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? _orange : const Color(0xffFFF0E6),
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(color: selected ? _orange : Colors.transparent),
+          boxShadow: selected
+              ? [BoxShadow(
+              color: _orange.withOpacity(0.30),
+              blurRadius: 8, offset: const Offset(0, 2))]
+              : [],
+        ),
+        child: Text(label, style: TextStyle(
+          color: selected ? Colors.white : Colors.grey.shade600,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 13,
+        )),
       ),
     );
   }
 
   // ════════════════════════════════════════════════════
-  // ОСНОВНОЙ КОНТЕНТ
+  // CONTENT
   // ════════════════════════════════════════════════════
   Widget _content() {
     return BlocListener<CategoryBloc, CategoryState>(
@@ -352,67 +698,69 @@ class _BooksScreenState extends State<BooksScreen> {
           }
         }
       },
-      child: BlocBuilder<BookBloc, BookState>(
-        builder: (context, bookState) {
-          if (bookState is BookLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5),
-            );
-          }
-          if (bookState is BookError) {
-            return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey.shade300),
-              const SizedBox(height: 12),
-              Text(bookState.message, style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
-            ]));
-          }
+      // ── Wrap BookCopyBloc ở đây để toàn bộ content dùng chung copyByBook ──
+      child: BlocBuilder<BookCopyBloc, BookCopyState>(
+        builder: (context, copyState) {
+          final copyByBook = _buildCopyMap(copyState);
 
-          // Извлечь данные
-          List<BookModel> allBooks = [];
-          Map<String, List<BookModel>> byCategory = {};
+          return BlocBuilder<BookBloc, BookState>(
+            builder: (context, bookState) {
+              if (bookState is BookLoading) {
+                return const Center(
+                    child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5));
+              }
+              if (bookState is BookError) {
+                return Center(child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.wifi_off_rounded, size: 56, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text(bookState.message,
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
+                    ]));
+              }
 
-          if (bookState is BookSuccess) {
-            allBooks = bookState.books;
-          } else if (bookState is BookByCategorySuccess) {
-            allBooks   = bookState.allBooks;
-            byCategory = bookState.booksByCategory;
-          }
+              List<BookModel> allBooks = [];
+              Map<String, List<BookModel>> byCategory = {};
 
-          // Кэш для bottom sheet
-          if (allBooks.isNotEmpty) _cachedAllBooks = allBooks;
+              if (bookState is BookSuccess) {
+                allBooks = bookState.books;
+              } else if (bookState is BookByCategorySuccess) {
+                allBooks   = bookState.allBooks;
+                byCategory = bookState.booksByCategory;
+              }
 
-          // База для фильтрации
-          final base = _selectedCatIdx > 0
-              ? (byCategory[_selectedCatName] ?? [])
-              : allBooks;
+              if (allBooks.isNotEmpty) _cachedAllBooks = allBooks;
 
-          // Применить фильтры
-          final filtered = _applyFilters(base);
-
-          // Маршрутизация отображения
-          if (_hasAnyFilter) {
-            // Есть хотя бы один фильтр → плоский список
-            return _filteredListView(filtered);
-          }
-          // Нет фильтров → группировка по категориям
-          return _groupedView(byCategory, allBooks);
+              if (_hasFilter) {
+                return _filteredListView(_applyFilters(allBooks), copyByBook);
+              }
+              return _groupedView(byCategory, allBooks, copyByBook);
+            },
+          );
         },
       ),
     );
   }
 
   // ════════════════════════════════════════════════════
-  // ВИД 1 – ГРУППИРОВКА ПО КАТЕГОРИЯМ (по умолчанию)
+  // VIEW 1 – GROUPED BY CATEGORY
   // ════════════════════════════════════════════════════
   Widget _groupedView(
       Map<String, List<BookModel>> byCategory,
       List<BookModel> allBooks,
+      Map<int, BookCopyModel> copyByBook,
       ) {
     if (byCategory.isEmpty) {
       if (allBooks.isEmpty) {
-        return const Center(child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5));
+        return const Center(
+            child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5));
       }
-      return _horizontalScroll(allBooks, () => context.read<BookBloc>().add(GetBookEvent()));
+      return _horizontalScroll(
+        allBooks,
+        copyByBook,
+            () => context.read<BookBloc>().add(GetBookEvent()),
+      );
     }
 
     return ListView.builder(
@@ -434,11 +782,13 @@ class _BooksScreenState extends State<BooksScreen> {
                     Container(
                       width: 4, height: 20,
                       margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(color: _orange, borderRadius: BorderRadius.circular(2)),
+                      decoration: BoxDecoration(
+                          color: _orange,
+                          borderRadius: BorderRadius.circular(2)),
                     ),
                     Text(catName, style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700, color: _textDark,
-                    )),
+                        fontSize: 17, fontWeight: FontWeight.w700,
+                        color: _textDark)),
                   ]),
                   Text(
                       context.tr('books.count', params: {'count': '${books.length}'}),
@@ -449,7 +799,8 @@ class _BooksScreenState extends State<BooksScreen> {
             if (books.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: CircularProgressIndicator(color: _orange, strokeWidth: 2)),
+                child: Center(child: CircularProgressIndicator(
+                    color: _orange, strokeWidth: 2)),
               )
             else
               SingleChildScrollView(
@@ -457,8 +808,10 @@ class _BooksScreenState extends State<BooksScreen> {
                 physics: const BouncingScrollPhysics(),
                 child: Row(
                   children: books.map((book) => BookCard(
-                    book: book, user: widget.user,
-                    authorFuture: bookService().getAuthorByID(book.id_author),
+                    book: book,
+                    user: widget.user,
+                    bookCopy: _getCopy(context, book.id_book, copyByBook),
+                    authorFuture: _bookService.getAuthorByID(book.id_author),
                     onReload: () => context.read<BookBloc>()
                         .add(GetBookByCategoryEvent(category: catName)),
                     onReservationLoad: () => context.read<ReservationBloc>()
@@ -472,7 +825,14 @@ class _BooksScreenState extends State<BooksScreen> {
     );
   }
 
-  Widget _horizontalScroll(List<BookModel> books, VoidCallback onReload) {
+  // ════════════════════════════════════════════════════
+  // HORIZONTAL SCROLL (dùng khi chưa có category)
+  // ════════════════════════════════════════════════════
+  Widget _horizontalScroll(
+      List<BookModel> books,
+      Map<int, BookCopyModel> copyByBook,
+      VoidCallback onReload,
+      ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -480,8 +840,10 @@ class _BooksScreenState extends State<BooksScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: books.map((book) => BookCard(
-          book: book, user: widget.user,
-          authorFuture: bookService().getAuthorByID(book.id_author),
+          book: book,
+          user: widget.user,
+          bookCopy: _getCopy(context, book.id_book, copyByBook),
+          authorFuture: _bookService.getAuthorByID(book.id_author),
           onReload: onReload,
           onReservationLoad: () => context.read<ReservationBloc>()
               .add(GetReservationsByUserEvent(widget.user.id_user)),
@@ -491,51 +853,52 @@ class _BooksScreenState extends State<BooksScreen> {
   }
 
   // ════════════════════════════════════════════════════
-  // ВИД 2 – ОТФИЛЬТРОВАННЫЙ СПИСОК (поиск / фильтры)
-  // ════════════════════════════════════════════════════
-  Widget _filteredListView(List<BookModel> books) {
-    // Заголовок результата
-    String subtitle;
-    if (_searchQuery.isNotEmpty) {
-      subtitle = context.tr(
-        'books.search_results_query',
-        params: {'count': '${books.length}', 'query': _searchQuery},
-      );
-    } else if (_selectedCatIdx > 0) {
-      subtitle = context.tr(
-        'books.search_results_category',
-        params: {'count': '${books.length}', 'category': _selectedCatName},
-      );
-    } else {
-      subtitle = context.tr(
-        'books.search_results_default',
-        params: {'count': '${books.length}'},
-      );
-    }
+  // VIEW 2 – FILTERED LIST
+  Widget _filteredListView(
+      List<BookModel> books,
+      Map<int, BookCopyModel> copyByBook,
+      ) {
+    final parts = <String>[];
+    if (_filterCategory != null)    parts.add('"$_filterCategoryName"');
+    if (_filterLanguage.isNotEmpty) parts.add(_filterLanguage);
+    if (_filterYear != null)        parts.add('$_filterYear');
+    if (_searchQuery.isNotEmpty)    parts.add('"$_searchQuery"');
+
+    final subtitle = parts.isEmpty
+        ? '${books.length} книг найдено'
+        : '${books.length} книг · ${parts.join(' · ')}';
 
     if (books.isEmpty) {
-      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.search_off_rounded, size: 72, color: Colors.grey.shade300),
-        const SizedBox(height: 14),
-        Text(
-          _searchQuery.isNotEmpty
-              ? context.tr(
-                  'books.not_found_query',
-                  params: {'query': _searchQuery},
-                )
-              : context.tr('books.not_found_filters'),
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey.shade400, fontSize: 14, height: 1.5),
-        ),
-      ]));
+      return Center(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, size: 72, color: Colors.grey.shade300),
+            const SizedBox(height: 14),
+            Text(context.tr('books.not_found_query'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.grey.shade400, fontSize: 14, height: 1.5)),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _clearAllFilters,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                    color: _orange, borderRadius: BorderRadius.circular(50)),
+                child: Text(context.tr('books.reset_filters'),
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ]));
     }
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+        padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
         child: Text(subtitle, style: TextStyle(
-          fontSize: 13, color: Colors.grey.shade500, fontWeight: FontWeight.w500,
-        )),
+            fontSize: 13, color: Colors.grey.shade500,
+            fontWeight: FontWeight.w500)),
       ),
       Expanded(
         child: ListView.builder(
@@ -543,8 +906,9 @@ class _BooksScreenState extends State<BooksScreen> {
           physics: const BouncingScrollPhysics(),
           itemCount: books.length,
           itemBuilder: (context, i) => _SearchItem(
-            book: books[i], user: widget.user,
-            authorFuture: bookService().getAuthorByID(books[i].id_author),
+            book: books[i],
+            user: widget.user,
+            authorFuture: _bookService.getAuthorByID(books[i].id_author),
             onReload: () => context.read<BookBloc>().add(GetBookEvent()),
             onReservationLoad: () => context.read<ReservationBloc>()
                 .add(GetReservationsByUserEvent(widget.user.id_user)),
@@ -553,168 +917,81 @@ class _BooksScreenState extends State<BooksScreen> {
       ),
     ]);
   }
+}
 
-  // ════════════════════════════════════════════════════
-  // BOTTOM SHEET ФИЛЬТРА
-  // ════════════════════════════════════════════════════
-  void _showFilterSheet() {
-    // Локальное состояние внутри листа
-    String tempLang = _filterLanguage;
-    int?   tempYear = _filterYear;
+// ════════════════════════════════════════════════════
+// WIDGET: Nút chip filter có icon + label + mũi tên ▾
+// ════════════════════════════════════════════════════
+class _FilterDropChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color orange;
+  final VoidCallback? onTap;
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            padding: EdgeInsets.only(
-              left: 24, right: 24, top: 20,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Хэндл
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
+  const _FilterDropChip({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.orange,
+    required this.onTap,
+  });
 
-                // Заголовок
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(context.tr('books.filter_title'), style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w800, color: _textDark,
-                    )),
-                    TextButton(
-                      onPressed: () => setSheet(() { tempLang = ''; tempYear = null; }),
-                      child: Text(
-                        context.tr('books.reset_all'),
-                        style: const TextStyle(color: _orange, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
 
-                // ── ЯЗЫК ──────────────────────────────
-                Text(context.tr('books.filter_language'), style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: _textDark,
-                )),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(children: [
-                    _sheetChip(
-                      context.tr('books.filter_all_languages'),
-                      tempLang.isEmpty,
-                      () => setSheet(() => tempLang = ''),
-                    ),
-                    ..._languages.map((lang) => _sheetChip(
-                      context.l10n.bookLanguageName(lang), tempLang == lang,
-                          () => setSheet(() => tempLang = lang),
-                    )),
-                  ]),
-                ),
-                const SizedBox(height: 22),
-
-                // ── ГОД ИЗДАНИЯ ───────────────────────
-                Text(context.tr('books.filter_year'), style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: _textDark,
-                )),
-                const SizedBox(height: 10),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(children: [
-                    _sheetChip(
-                      context.tr('books.filter_all_years'),
-                      tempYear == null,
-                      () => setSheet(() => tempYear = null),
-                    ),
-                    ..._years.map((year) => _sheetChip(
-                      '$year', tempYear == year,
-                          () => setSheet(() => tempYear = year),
-                    )),
-                  ]),
-                ),
-                const SizedBox(height: 28),
-
-                // ── Кнопка ПРИМЕНИТЬ ──────────────────
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _filterLanguage = tempLang;
-                        _filterYear     = tempYear;
-                      });
-                      Navigator.pop(ctx);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _orange,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      context.tr('books.apply'),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _sheetChip(String label, bool selected, VoidCallback onTap) {
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? _orange : const Color(0xffFFF0E6),
+          color: disabled
+              ? Colors.grey.shade100
+              : active ? orange : Colors.white,
           borderRadius: BorderRadius.circular(50),
           border: Border.all(
-            color: selected ? _orange : Colors.transparent,
+            color: disabled
+                ? Colors.grey.shade200
+                : active ? orange : Colors.grey.shade300,
+            width: 1.2,
           ),
+          boxShadow: active
+              ? [BoxShadow(
+              color: orange.withOpacity(0.30),
+              blurRadius: 8, offset: const Offset(0, 2))]
+              : [BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 4, offset: const Offset(0, 2))],
         ),
-        child: Text(label, style: TextStyle(
-          color: selected ? Colors.white : Colors.grey.shade600,
-          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          fontSize: 13,
-        )),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14,
+              color: disabled
+                  ? Colors.grey.shade400
+                  : active ? Colors.white : Colors.grey.shade600),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(
+            fontSize: 13,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            color: disabled
+                ? Colors.grey.shade400
+                : active ? Colors.white : Colors.grey.shade700,
+          )),
+          const SizedBox(width: 4),
+          Icon(Icons.keyboard_arrow_down_rounded, size: 16,
+              color: disabled
+                  ? Colors.grey.shade300
+                  : active ? Colors.white : Colors.grey.shade500),
+        ]),
       ),
     );
   }
 }
 
 // ════════════════════════════════════════════════════
-// КОМПАКТНАЯ КАРТОЧКА РЕЗУЛЬТАТА ПОИСКА
+// COMPACT SEARCH RESULT ITEM
 // ════════════════════════════════════════════════════
 class _SearchItem extends StatelessWidget {
   final BookModel book;
@@ -740,7 +1017,10 @@ class _SearchItem extends StatelessWidget {
           context, AppRoutes.bookDetail,
           arguments: {'book': book, 'user': user},
         );
-        if (result == true && context.mounted) { onReload(); onReservationLoad(); }
+        if (result == true && context.mounted) {
+          onReload();
+          onReservationLoad();
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -749,12 +1029,10 @@ class _SearchItem extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [BoxShadow(
-            color: Colors.brown.withOpacity(0.07),
-            blurRadius: 10, offset: const Offset(0, 4),
-          )],
+              color: Colors.brown.withOpacity(0.07),
+              blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Row(children: [
-          // Обложка
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: book.image_url.isNotEmpty
@@ -767,28 +1045,30 @@ class _SearchItem extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // Информация
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(book.title, style: const TextStyle(
-              fontSize: 15, fontWeight: FontWeight.w700, color: _textDark,
-            ), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
-            FutureBuilder<AuthorModel>(
-              future: authorFuture,
-              builder: (context, snap) => Text(
-                snap.hasData ? snap.data!.full_name : '...',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                maxLines: 1, overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(spacing: 6, runSpacing: 4, children: [
-              _chip(context.l10n.bookLanguageName(book.language).toUpperCase(), Icons.language_rounded),
-              _chip('${book.publish_year}',      Icons.calendar_today_rounded),
-            ]),
-          ])),
-
-          const Icon(Icons.chevron_right_rounded, color: Color(0xffFFCCA8), size: 24),
+          Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(book.title, style: const TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700,
+                    color: _textDark),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                FutureBuilder<AuthorModel>(
+                  future: authorFuture,
+                  builder: (context, snap) => Text(
+                    snap.hasData ? snap.data!.full_name : '...',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(spacing: 6, runSpacing: 4, children: [
+                  _chip(book.language.toUpperCase(), Icons.language_rounded),
+                  _chip('${book.publish_year}', Icons.calendar_today_rounded),
+                ]),
+              ])),
+          const Icon(Icons.chevron_right_rounded,
+              color: Color(0xffFFCCA8), size: 24),
         ]),
       ),
     );
@@ -797,7 +1077,8 @@ class _SearchItem extends StatelessWidget {
   Widget _placeholder() => Container(
     width: 60, height: 84,
     decoration: BoxDecoration(
-      color: const Color(0xffFFEDD8), borderRadius: BorderRadius.circular(10),
+      color: const Color(0xffFFEDD8),
+      borderRadius: BorderRadius.circular(10),
     ),
     child: const Icon(Icons.book_rounded, color: _orange, size: 30),
   );
@@ -805,12 +1086,14 @@ class _SearchItem extends StatelessWidget {
   Widget _chip(String label, IconData icon) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
-      color: const Color(0xffFFF0E6), borderRadius: BorderRadius.circular(20),
+      color: const Color(0xffFFF0E6),
+      borderRadius: BorderRadius.circular(20),
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(icon, size: 11, color: _orange),
       const SizedBox(width: 4),
-      Text(label, style: const TextStyle(fontSize: 11, color: _orange, fontWeight: FontWeight.w600)),
+      Text(label, style: const TextStyle(
+          fontSize: 11, color: _orange, fontWeight: FontWeight.w600)),
     ]),
   );
 }

@@ -26,4 +26,12 @@ class PaymentService {
   Future<void> deletePayment(int id_payment) async {
     await ApiService.delete('/payments-management/payment/$id_payment');
   }
+
+  Future<PaymentModel> createPayment(PaymentModel payment) async {
+    final data = await ApiService.post(
+      '/payments-management/payment',
+      payment.toJson(),
+    );
+    return PaymentModel.fromJson(data);
+  }
 }

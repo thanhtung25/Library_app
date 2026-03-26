@@ -20,4 +20,8 @@ class FavoriteService {
   Future<void> deleteFavorite(int id_favorite) async {
     await ApiService.delete('/favorites-management/favorite/$id_favorite');
   }
+  Future<List<FavoriteModel>> getFavoritesByUserId(int id_user) async {
+    final data = await ApiService.get('/favorites-management/favorites/user/$id_user');
+    return (data as List).map((e) => FavoriteModel.fromJson(e)).toList();
+  }
 }

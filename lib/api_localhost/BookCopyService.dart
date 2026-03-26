@@ -7,6 +7,11 @@ class BookCopyService {
     return (data as List).map((e) => BookCopyModel.fromJson(e)).toList();
   }
 
+  Future<BookCopyModel> getBookCopyByIdBook(int id_book) async {
+    final data = await ApiService.get('/book_copies-management/book_copies/book/$id_book');
+    return BookCopyModel.fromJson(data);
+  }
+
   Future<BookCopyModel> getBookCopyById(int id_copy) async {
     final data = await ApiService.get('/book_copies-management/book_copy/$id_copy');
     return BookCopyModel.fromJson(data);

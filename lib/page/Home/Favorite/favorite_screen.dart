@@ -3,11 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
+import 'package:library_app/bloc/favorite/bloc.dart';
+import 'package:library_app/bloc/favorite/event.dart';
+import 'package:library_app/bloc/favorite/state.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
 import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/model/book_model.dart';
-import 'package:library_app/model/favorite_manager.dart';
+import 'package:library_app/model/favorite_model.dart';
 import 'package:library_app/model/user_model.dart';
 import '../../../Router/AppRoutes.dart';
 import '../../../api_localhost/ApiService.dart';
@@ -32,7 +35,11 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   @override
   void initState() {
     super.initState();
+    // Load books + favorites theo user
     context.read<BookBloc>().add(GetBookEvent());
+    context.read<FavoriteBloc>().add(
+      GetFavoritesByUserIdEvent(id_user: widget.user.id_user),
+    );
     _searchCtrl.addListener(() =>
         setState(() => _searchQuery = _searchCtrl.text.trim()));
   }
@@ -49,7 +56,6 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Заголовок ──────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -63,7 +69,6 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
             ]),
           ),
 
-          // ── Поиск ──────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
             child: Container(
@@ -102,43 +107,61 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   }
 
   Widget _buildGrid() {
-    return BlocBuilder<BookBloc, BookState>(
-      builder: (ctx, bookState) {
-        List<BookModel> allBooks = [];
-        if (bookState is BookSuccess)           allBooks = bookState.books;
-        if (bookState is BookByCategorySuccess) allBooks = bookState.allBooks;
+    return BlocConsumer<FavoriteBloc, FavoriteState>(
+      // Reload sau khi add/delete thành công
+      listenWhen: (prev, curr) => curr is FavoriteActionSuccess,
+      listener: (context, state) {
+        context.read<FavoriteBloc>().add(
+          GetFavoritesByUserIdEvent(id_user: widget.user.id_user),
+        );
+      },
+      buildWhen: (prev, curr) =>
+      curr is FavoriteByUserSuccess ||
+          curr is FavoriteLoading ||
+          curr is FavoriteInitial,
+      builder: (ctx, favState) {
+        // Loading
+        if (favState is FavoriteLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-        return ValueListenableBuilder<Set<int>>(
-          valueListenable: FavoriteManager.notifier,
-          builder: (ctx, favorites, _) {
-            // Фильтр: только избранные
-            var books = allBooks
-                .where((b) => favorites.contains(b.id_book))
-                .toList();
+        // Lấy danh sách favorites của user
+        final List<FavoriteModel> userFavorites = favState is FavoriteByUserSuccess
+            ? favState.favoritesByUser[widget.user.id_user] ?? []
+            : [];
 
-            // Поиск по названию
+        // Empty state
+        if (userFavorites.isEmpty) {
+          return Center(child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.bookmark_border_rounded, size: 80, color: Colors.grey.shade300),
+              const SizedBox(height: 14),
+              Text('Нет сохранённых книг',
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 15, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Text('Нажмите 🔖 на книге, чтобы добавить',
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  textAlign: TextAlign.center),
+            ],
+          ));
+        }
+
+        return BlocBuilder<BookBloc, BookState>(
+          builder: (ctx, bookState) {
+            List<BookModel> allBooks = [];
+            if (bookState is BookSuccess)           allBooks = bookState.books;
+            if (bookState is BookByCategorySuccess) allBooks = bookState.allBooks;
+
+            // Lọc books có trong favorites
+            final favBookIds = userFavorites.map((f) => f.id_book).toSet();
+            var books = allBooks.where((b) => favBookIds.contains(b.id_book)).toList();
+
+            // Filter search
             if (_searchQuery.isNotEmpty) {
-              books = books
-                  .where((b) => b.title.toLowerCase()
-                  .contains(_searchQuery.toLowerCase()))
+              books = books.where((b) =>
+                  b.title.toLowerCase().contains(_searchQuery.toLowerCase()))
                   .toList();
-            }
-
-            // Пустое состояние
-            if (favorites.isEmpty) {
-              return Center(child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.bookmark_border_rounded, size: 80, color: Colors.grey.shade300),
-                  const SizedBox(height: 14),
-                  Text(context.tr('favorite.empty_title'),
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 15, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Text(context.tr('favorite.empty_subtitle'),
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-                      textAlign: TextAlign.center),
-                ],
-              ));
             }
 
             if (books.isEmpty) {
@@ -147,7 +170,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                 children: [
                   Icon(Icons.search_off_rounded, size: 72, color: Colors.grey.shade300),
                   const SizedBox(height: 12),
-                  Text(context.tr('favorite.not_found'),
+                  Text(context.tr('favorite.empty_title'),
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 15, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text(context.tr('favorite.empty_subtitle'),
                       style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
                 ],
               ));
@@ -166,8 +192,14 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
               itemBuilder: (ctx, i) => _FavCard(
                 book: books[i],
                 user: widget.user,
+                favorites: userFavorites,
                 authorFuture: bookService().getAuthorByID(books[i].id_author),
-                onReload: () => context.read<BookBloc>().add(GetBookEvent()),
+                onReload: () {
+                  context.read<BookBloc>().add(GetBookEvent());
+                  context.read<FavoriteBloc>().add(
+                    GetFavoritesByUserIdEvent(id_user: widget.user.id_user),
+                  );
+                },
                 onReservationLoad: () => context.read<ReservationBloc>()
                     .add(GetReservationsByUserEvent(widget.user.id_user)),
               ),
@@ -179,10 +211,11 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   }
 }
 
-// ── Карточка избранной книги ───────────────────────────
+// ── Card ───────────────────────────────────────────────
 class _FavCard extends StatelessWidget {
   final BookModel book;
   final UserModel user;
+  final List<FavoriteModel> favorites;
   final Future<AuthorModel> authorFuture;
   final VoidCallback onReload, onReservationLoad;
 
@@ -190,10 +223,31 @@ class _FavCard extends StatelessWidget {
   static const Color _textDark = Color(0xff3D2314);
 
   const _FavCard({
-    required this.book, required this.user,
+    required this.book,
+    required this.user,
+    required this.favorites,
     required this.authorFuture,
-    required this.onReload, required this.onReservationLoad,
+    required this.onReload,
+    required this.onReservationLoad,
   });
+
+  void _deleteFavorite(BuildContext context) {
+    final existing = favorites.firstWhere(
+          (f) => f.id_book == book.id_book && f.id_user == user.id_user,
+      orElse: () => FavoriteModel(id_book: book.id_book, id_user: user.id_user),
+    );
+
+    if (existing.id_favorite != null) {
+      context.read<FavoriteBloc>().add(
+        DeleteFavoriteEvent(id_favorite: existing.id_favorite!),
+      );
+    } else {
+      // Không tìm thấy → reload lại
+      context.read<FavoriteBloc>().add(
+        GetFavoritesByUserIdEvent(id_user: user.id_user),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -215,7 +269,6 @@ class _FavCard extends StatelessWidget {
           )],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Обложка + кнопка удалить из избранного
           Stack(children: [
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
@@ -227,30 +280,31 @@ class _FavCard extends StatelessWidget {
               )
                   : _placeholder(),
             ),
+            // Nút xóa khỏi favorites
             Positioned(
               top: 8, right: 8,
               child: GestureDetector(
-                onTap: () => FavoriteManager.toggle(book.id_book),
+                onTap: () => _deleteFavorite(context),
                 child: Container(
                   width: 32, height: 32,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.92),
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6)],
+                    boxShadow: [BoxShadow(
+                      color: Colors.black.withOpacity(0.1), blurRadius: 6,
+                    )],
                   ),
                   child: const Icon(Icons.bookmark_rounded, color: _orange, size: 18),
                 ),
               ),
             ),
           ]),
-          // Название
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
             child: Text(book.title,
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _textDark),
                 maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
-          // Автор
           Padding(
             padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
             child: FutureBuilder<AuthorModel>(
