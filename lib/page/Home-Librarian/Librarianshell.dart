@@ -22,7 +22,7 @@ class _LibrarianShellState extends State<LibrarianShell> {
   void initState() {
     super.initState();
     _pages = [
-      BookListScreen(user: widget.user),
+      BookListScreen(user: widget.user,),
       LoanManagementScreen(user: widget.user),
       ReportScreen(user: widget.user),
       UserManagementScreen(user: widget.user),

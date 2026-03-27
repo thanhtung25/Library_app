@@ -22,3 +22,8 @@ class BookCopyByIdBookSuccess extends BookCopyState {
   final List<BookCopyModel> bookCopies;
   BookCopyByIdBookSuccess(this.bookCopybyIdBook, this.bookCopies,);
 }
+
+class BookCopyUpdatedSuccess extends BookCopyState {
+  final BookCopyModel bookCopy;
+  BookCopyUpdatedSuccess({required this.bookCopy});
+}

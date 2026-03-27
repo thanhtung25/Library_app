@@ -12,6 +12,8 @@ class BookCopyBloc extends Bloc<BookCopyEvent, BookCopyState> {
   BookCopyBloc(this.bookCopyService) : super(BookCopyInitial()) {
     on<GetBookCopyEvent>(_getBookCopy);
     on<GetBookByIdBookEvent>(_getBookByIdBook);
+    on<UpdateBookCopyEvent>(_updateBookCopy);
+
   }
 
   Future<void> _getBookCopy(
@@ -44,6 +46,45 @@ class BookCopyBloc extends Bloc<BookCopyEvent, BookCopyState> {
         Map.from(_booksByIdBook),
         _allBookCopy,
       ));
+    } catch (e) {
+      emit(BookCopyError(e.toString()));
+    }
+  }
+
+  // ── UPDATE ─────────────────────────────────────────────────────────────────
+  Future<void> _updateBookCopy(
+      UpdateBookCopyEvent event,
+      Emitter<BookCopyState> emit,
+      ) async {
+    emit(BookCopyLoading());
+    try {
+      // Tạo object cập nhật từ các field của event
+      final updated = BookCopyModel(
+        id_copy:       event.id_copy,
+        id_book:       event.id_book,
+        barcode:       event.barcode,
+        qr_code:       event.qr_code,
+        location:      event.location,
+        received_date: event.received_date,
+        condition:     event.condition,
+        status:        event.status,
+      );
+
+      final result = await bookCopyService.updateBookCopy(updated);
+
+      // Cập nhật cache _allBookCopy
+      _allBookCopy = _allBookCopy
+          .map((c) => c.id_copy == event.id_copy ? result : c)
+          .toList();
+
+      // Cập nhật cache _booksByIdBook
+      if (_booksByIdBook.containsKey(event.id_book)) {
+        _booksByIdBook[event.id_book] = _booksByIdBook[event.id_book]!
+            .map((c) => c.id_copy == event.id_copy ? result : c)
+            .toList();
+      }
+
+      emit(BookCopyUpdatedSuccess(bookCopy: result));
     } catch (e) {
       emit(BookCopyError(e.toString()));
     }
