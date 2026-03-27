@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:library_app/page/Home/Books/Books_screen.dart';
-import 'package:library_app/page/Home/Borrow/borrowBook_screen.dart';
-import 'package:library_app/page/Home/Favorite/favorite_screen.dart';
-import 'package:library_app/page/Home/HomeTab.dart';
-import 'package:library_app/page/Home/Profile/profile_screen.dart';
+
 
 import '../../model/user_model.dart';
+import 'Books/Books_screen.dart';
+import 'Borrow/borrowBook_screen.dart';
+import 'Favorite/favorite_screen.dart';
+import 'HomeTab.dart';
+import 'Profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;

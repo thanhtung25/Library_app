@@ -9,13 +9,11 @@ import 'package:library_app/model/book_model.dart';
 import 'package:library_app/model/reservations_model.dart';
 import 'package:library_app/model/user_model.dart';
 
-import '../../api_localhost/ApiService.dart';
-import '../../api_localhost/BookCopyService.dart';
-import '../../api_localhost/LoanService.dart';
-import '../../bloc/loan/bloc.dart';
-import '../../bloc/loan/event.dart';
-import '../../model/book_copy_model.dart';
-import '../../model/loan_model.dart';
+import '../../../api_localhost/ApiService.dart';
+import '../../../api_localhost/BookCopyService.dart';
+import '../../../api_localhost/LoanService.dart';
+import '../../../model/book_copy_model.dart';
+import '../../../model/loan_model.dart';
 import 'cart_helpers.dart';
 import 'widgets/cart_book_card.dart';
 import 'widgets/cart_summary.dart';

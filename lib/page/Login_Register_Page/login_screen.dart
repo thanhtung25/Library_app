@@ -36,7 +36,29 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  @override
+  void _navigateByRole(BuildContext context, state) {
+    if (state is AuthSuccess) {
+      final role = state.user.role.toLowerCase();
+
+      if (role == 'librarian') {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.librarianShell,
+          arguments: state.user,
+        );
+      } else {
+        // Default: reader
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.home,
+          arguments: state.user,
+        );
+      }
+    }
+  }
+
+
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
@@ -44,11 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
           listener: (context, state) {
             // TODO: implement listener}
             if (state is AuthSuccess) {
-              Navigator.pushReplacementNamed(
-                context,
-                AppRoutes.home,
-                arguments: state.user,
-              );
+              _navigateByRole(context, state);
             }
             if (state is AuthError) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -156,10 +174,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: SizedBox(
                     width: double.infinity,
                     height: 60,
-                    child: FloatingActionButton(
+                    child: BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      return FloatingActionButton(
                       backgroundColor: const Color(0xffFF9E74),
-                      onPressed: login,
-                        child: Text(
+                      onPressed: state is AuthLoading ? null : login,
+                        child:state is AuthLoading
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Text(
                           context.tr('login.submit'),
                           style: const TextStyle(
                             fontFamily: 'Times New Roman',
@@ -168,7 +190,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: Colors.white,
                           ),
                         ),
-                      ),
+                      );
+                    },
+                  ),
                 ),
               ),
 

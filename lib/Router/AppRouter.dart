@@ -9,23 +9,28 @@ import 'package:library_app/model/book_model.dart';
 import 'package:library_app/page/Login_Register_Page/person_info_screen.dart';
 import 'package:library_app/page/Login_Register_Page/register_screen.dart';
 import '../model/user_model.dart';
-import '../page/CartReservation/CartReservationScreen.dart';
-import '../page/Home/Books/book_detail_screen.dart';
-import '../page/Home/home_screen.dart';
+import '../page/Home-Librarian/Librarianshell.dart';
+import '../page/Home-Reader/Books/book_detail_screen.dart';
+import '../page/Home-Reader/CartReservation/CartReservationScreen.dart';
+import '../page/Home-Reader/home_screen.dart';
 import '../page/Login_Register_Page/login_screen.dart';
 import 'AppRoutes.dart';
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
+
+      // Auth
+      case AppRoutes.login:
+        return MaterialPageRoute(builder: (_) => LoginScreen());
+      case AppRoutes.register:
+        return MaterialPageRoute(builder: (_) => RegisterScreen());
+
+       // Reader
       case AppRoutes.home:
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(
           builder: (_) => HomeScreen(user: user),
         );
-      case AppRoutes.login:
-        return MaterialPageRoute(builder: (_) => LoginScreen());
-      case AppRoutes.register:
-        return MaterialPageRoute(builder: (_) => RegisterScreen());
       case AppRoutes.personinfo:
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(builder: (_) => PersonInfoScreen(user:user));
@@ -47,6 +52,12 @@ class AppRouter {
         final user = settings.arguments as UserModel;
         return MaterialPageRoute(builder: (_) => CartReservationScreen(userModel: user,));
 
+      // Librarian
+      case AppRoutes.librarianShell:
+        final user = settings.arguments as UserModel;
+        return MaterialPageRoute(
+          builder: (_) => LibrarianShell(user: user),
+        );
       default:
         return MaterialPageRoute(
           builder: (context) => Scaffold(

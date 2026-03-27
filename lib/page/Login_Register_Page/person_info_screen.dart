@@ -98,6 +98,27 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
     );
   }
 
+  void _navigateByRole(BuildContext context, state) {
+    if (state is AuthSuccess) {
+      final role = state.user.role.toLowerCase();
+
+      if (role == 'librarian') {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.librarianShell,
+          arguments: state.user,
+        );
+      } else {
+        // Default: reader
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.home,
+          arguments: state.user,
+        );
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -120,12 +141,7 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
         listener: (context, state) {
           // TODO: implement listener}
           if (state is AuthSuccess) {
-            print("Dang ky thanh cong");
-            Navigator.pushReplacementNamed(
-              context,
-              AppRoutes.home,
-              arguments: state.user,
-            );
+            _navigateByRole(context, state);
           }
           if (state is AuthError) {
 
