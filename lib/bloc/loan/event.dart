@@ -23,3 +23,8 @@ class DeleteLoanEvent extends LoanEvent {
   final int id_loan;
   DeleteLoanEvent({required this.id_loan});
 }
+class GetLoansByUserIdEvent extends LoanEvent {
+  final int id_user;
+  GetLoansByUserIdEvent({required this.id_user});
+}
+

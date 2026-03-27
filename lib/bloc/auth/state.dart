@@ -16,3 +16,13 @@ class AuthError extends AuthState {
 
   AuthError(this.message);
 }
+
+class UserUpdateSuccess extends AuthState {
+  final UserModel user;
+  UserUpdateSuccess(this.user);
+}
+class UploadAvatarLoading extends AuthState {}
+class AvatarUploadSuccess extends AuthState {
+  final UserModel user;
+  AvatarUploadSuccess(this.user);
+}

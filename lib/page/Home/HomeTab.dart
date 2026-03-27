@@ -10,6 +10,7 @@ import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
 import 'package:library_app/localization/app_localizations.dart';
 
+import '../../api_localhost/ApiService.dart';
 import '../../api_localhost/AuthService.dart';
 import '../../api_localhost/BookService.dart';
 import '../../bloc/book/bloc.dart';
@@ -98,9 +99,9 @@ class _HomeTabState extends State<HomeTab> {
                 border: Border.all(color: Colors.white, width: 2.5),
                 boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: const Offset(0, 4))],
               ),
-              child: const CircleAvatar(
+              child:  CircleAvatar(
                 radius: 24,
-                backgroundImage: AssetImage('assets/images/lich.png'),
+                backgroundImage:  NetworkImage('${ApiService.baseUrl}${widget.user.avatar_url}'),
                 backgroundColor: Colors.white,
               ),
             ),

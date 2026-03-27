@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
+import 'package:library_app/bloc/loan/bloc.dart';
+import 'package:library_app/bloc/loan/event.dart';
+import 'package:library_app/bloc/loan/state.dart';
 import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
 import 'package:library_app/bloc/reservation/event.dart';
@@ -10,6 +13,12 @@ import 'package:library_app/bloc/reservation/state.dart';
 import 'package:library_app/model/book_model.dart';
 import 'package:library_app/model/reservations_model.dart';
 import 'package:library_app/model/user_model.dart';
+
+import '../../../bloc/book_copy/bloc.dart';
+import '../../../bloc/book_copy/event.dart';
+import '../../../bloc/book_copy/state.dart';
+import '../../../model/book_copy_model.dart';
+import '../../../model/loan_model.dart';
 
 class BorrowbookScreen extends StatefulWidget {
   final UserModel user;
@@ -33,10 +42,11 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<ReservationBloc>().add(
-      GetReservationsByUserEvent(widget.user.id_user),
+    context.read<LoanBloc>().add(
+      GetLoansByUserIdEvent(id_user: widget.user.id_user),
     );
     context.read<BookBloc>().add(GetBookEvent());
+    context.read<BookCopyBloc>().add(GetBookCopyEvent());
   }
 
   String _fmt(DateTime? dt) {
@@ -46,12 +56,12 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
         '.${dt.year}';
   }
 
-  bool _isOverdue(ReservationModel r) =>
-      r.expiration_date != null &&
-          r.expiration_date!.isBefore(DateTime.now()) &&
+  bool _isOverdue(LoanModel r) =>
+      r.return_date != null &&
+          r.return_date.isBefore(DateTime.now()) &&
           r.status.toLowerCase() != 'returned';
 
-  Color _rowBg(ReservationModel r) {
+  Color _rowBg(LoanModel r) {
     if (_isOverdue(r))                            return const Color(0xffFFE5E5);
     switch (r.status.toLowerCase()) {
       case 'approved': return const Color(0xffE8F8EC);
@@ -60,41 +70,73 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
     }
   }
 
-  Color _badgeColor(ReservationModel r) {
-    if (_isOverdue(r))                            return Colors.red.shade700;
-    switch (r.status.toLowerCase()) {
-      case 'approved': return Colors.green.shade700;
-      case 'returned': return Colors.grey.shade600;
-      default:         return Colors.orange.shade800;
+  Color _badgeColor(LoanModel r) {
+    final s = r.status.toLowerCase();
+
+    if (_isOverdue(r) || s == 'overdue') {
+      return Colors.red.shade700;
+    }
+
+    switch (s) {
+      case 'reserved':
+        return Colors.orange.shade800;
+
+      case 'borrowed':
+        return Colors.green.shade700;
+
+      default:
+        return Colors.grey.shade600;
     }
   }
 
-  String _badgeLabel(ReservationModel r) {
-    if (_isOverdue(r))                            return context.tr('borrowed.status.overdue');
-    switch (r.status.toLowerCase()) {
-      case 'approved': return context.tr('borrowed.status.approved');
-      case 'returned': return context.tr('borrowed.status.returned');
-      default:         return context.tr('borrowed.status.pending');
+  String _badgeLabel(LoanModel r) {
+    final s = r.status.toLowerCase();
+
+    if (_isOverdue(r) || s == 'overdue') {
+      return context.tr('borrowed.status.overdue');
+    }
+
+    switch (s) {
+      case 'reserved':
+        return context.tr('borrowed.status.reserved');
+
+      case 'borrowed':
+        return context.tr('borrowed.status.borrowed');
+
+      default:
+        return context.tr('borrowed.status.unknown');
     }
   }
 
-  List<ReservationModel> _sorted(
-      List<ReservationModel> list,
+  List<LoanModel> _sorted(
+      List<LoanModel> list,
+      Map<int, BookCopyModel> copyMap,
       Map<int, BookModel> bookMap,
       ) {
-    final s = List<ReservationModel>.from(list);
+    final s = List<LoanModel>.from(list);
+
     s.sort((a, b) {
       int cmp;
+
       if (_sortField == _SortField.name) {
-        cmp = (bookMap[a.id_book]?.title ?? '')
-            .compareTo(bookMap[b.id_book]?.title ?? '');
+        final copyA = copyMap[a.id_copy];
+        final copyB = copyMap[b.id_copy];
+
+        final titleA =
+        copyA != null ? (bookMap[copyA.id_book]?.title ?? '') : '';
+        final titleB =
+        copyB != null ? (bookMap[copyB.id_book]?.title ?? '') : '';
+
+        cmp = titleA.compareTo(titleB);
       } else {
-        final da = a.expiration_date ?? DateTime(9999);
-        final db = b.expiration_date ?? DateTime(9999);
+        final da = a.return_date;
+        final db = b.return_date;
         cmp = da.compareTo(db);
       }
+
       return _sortDir == _SortDir.asc ? cmp : -cmp;
     });
+
     return s;
   }
 
@@ -195,112 +237,207 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
   }
 
   Widget _buildTable() {
-    return BlocBuilder<ReservationBloc, ReservationState>(
-      builder: (ctx, resState) {
-        if (resState is ReservationLoading) {
+    return BlocBuilder<LoanBloc, LoanState>(
+      builder: (ctx, loanState) {
+        if (loanState is LoanLoading) {
           return const Center(
-            child: CircularProgressIndicator(color: _orange, strokeWidth: 2.5),
+            child: CircularProgressIndicator(
+              color: _orange,
+              strokeWidth: 2.5,
+            ),
           );
         }
-        if (resState is ReservationError) {
-          return Center(child: Text(resState.error,
-              style: const TextStyle(color: Colors.redAccent)));
+
+        if (loanState is LoanError) {
+          return Center(
+            child: Text(
+              loanState.message,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          );
         }
 
-        final reservations =
-        resState is ReservationLoaded ? resState.reservations : <ReservationModel>[];
+        final List<LoanModel> loans =
+        loanState is LoanByUserSuccess ? loanState.loans : <LoanModel>[];
 
-        return BlocBuilder<BookBloc, BookState>(
-          builder: (ctx, bookState) {
-            List<BookModel> allBooks = [];
-            if (bookState is BookSuccess) allBooks = bookState.books;
-            if (bookState is BookByCategorySuccess) allBooks = bookState.allBooks;
-            final bookMap = {for (final b in allBooks) b.id_book: b};
+        return BlocBuilder<BookCopyBloc, BookCopyState>(
+          builder: (ctx, copyState) {
+            List<BookCopyModel> allCopies = [];
 
-            final rows = _sorted(reservations, bookMap);
+            if (copyState is BookCopySuccess) {
+              allCopies = copyState.bookCopies;
+            }
 
-            final body = Container(
-              margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                boxShadow: [BoxShadow(
-                  color: Colors.brown.withOpacity(0.07),
-                  blurRadius: 10, offset: const Offset(0, 4),
-                )],
-              ),
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                child: rows.isEmpty
-                    ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Center(child: Column(children: [
-                    Icon(Icons.inbox_rounded, size: 60, color: Colors.grey.shade300),
-                    const SizedBox(height: 10),
-                    Text(context.tr('borrowed.empty'),
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
-                  ])),
-                )
-                    : ListView.separated(
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: rows.length,
-                  separatorBuilder: (_, __) =>
-                      Divider(height: 1, indent: 14, endIndent: 14, color: Colors.grey.shade200),
-                  itemBuilder: (ctx, i) {
-                    final r    = rows[i];
-                    final book = bookMap[r.id_book];
-                    final over = _isOverdue(r);
+            final copyMap = {
+              for (final c in allCopies)
+                if (c.id_copy != null) c.id_copy!: c,
+            };
 
-                    return Container(
-                      color: _rowBg(r),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        child: Row(children: [
-                          // Книга + статус
-                          Expanded(flex: 3, child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  book?.title ?? context.tr(
-                                    'borrowed.book_fallback',
-                                    params: {'id': '${r.id_book}'},
-                                  ),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _textDark),
-                                  maxLines: 2, overflow: TextOverflow.ellipsis),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _badgeColor(r).withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Text(_badgeLabel(r), style: TextStyle(
-                                  fontSize: 10, fontWeight: FontWeight.w700,
-                                  color: _badgeColor(r),
-                                )),
-                              ),
-                            ],
-                          )),
-                          // Дата выдачи
-                          Expanded(flex: 2, child: Text(_fmt(r.reservation_date),
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              textAlign: TextAlign.center)),
-                          // Дата возврата
-                          Expanded(flex: 2, child: Text(_fmt(r.expiration_date),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: over ? Colors.red.shade700 : Colors.grey.shade600,
-                                fontWeight: over ? FontWeight.w700 : FontWeight.normal,
-                              ),
-                              textAlign: TextAlign.center)),
-                        ]),
+            return BlocBuilder<BookBloc, BookState>(
+              builder: (ctx, bookState) {
+                List<BookModel> allBooks = [];
+
+                if (bookState is BookSuccess) {
+                  allBooks = bookState.books;
+                } else if (bookState is BookByCategorySuccess) {
+                  allBooks = bookState.allBooks;
+                }
+
+                final bookMap = {for (final b in allBooks) b.id_book: b};
+
+                final rows = _sorted(loans, copyMap, bookMap);
+
+                return Container(
+                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(16),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.brown.withOpacity(0.07),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                    );
-                  },
-                ),
-              ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(16),
+                    ),
+                    child: rows.isEmpty
+                        ? Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.inbox_rounded,
+                              size: 60,
+                              color: Colors.grey.shade300,
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              context.tr('borrowed.empty'),
+                              style: TextStyle(
+                                color: Colors.grey.shade400,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                        : ListView.separated(
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        indent: 14,
+                        endIndent: 14,
+                        color: Colors.grey.shade200,
+                      ),
+                      itemBuilder: (ctx, i) {
+                        final r = rows[i];
+                        final copy = copyMap[r.id_copy];
+                        final book =
+                        copy != null ? bookMap[copy.id_book] : null;
+                        final over = _isOverdue(r);
+
+                        return Container(
+                          color: _rowBg(r),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        book?.title ??
+                                            context.tr(
+                                              'borrowed.book_fallback',
+                                              params: {
+                                                'id': '${r.id_copy}'
+                                              },
+                                            ),
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: _textDark,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _badgeColor(r)
+                                              .withOpacity(0.12),
+                                          borderRadius:
+                                          BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          _badgeLabel(r),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: _badgeColor(r),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    _fmt(r.issue_date),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    _fmt(r.return_date),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: over
+                                          ? Colors.red.shade700
+                                          : Colors.grey.shade600,
+                                      fontWeight: over
+                                          ? FontWeight.w700
+                                          : FontWeight.normal,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
             );
-            return body;
           },
         );
       },

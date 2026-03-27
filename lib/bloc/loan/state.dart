@@ -16,3 +16,7 @@ class LoanError extends LoanState {
   final String message;
   LoanError(this.message);
 }
+class LoanByUserSuccess extends LoanState {
+  final List<LoanModel> loans;
+  LoanByUserSuccess({required this.loans});
+}

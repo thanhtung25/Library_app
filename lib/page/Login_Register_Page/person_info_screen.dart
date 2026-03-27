@@ -54,7 +54,9 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
       setState(() {
         _selectedBirthDate = pickedDate;
         _birthController.text =
-        "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
+        "${pickedDate.day.toString().padLeft(2, '0')}/"
+            "${pickedDate.month.toString().padLeft(2, '0')}/"
+            "${pickedDate.year}";
       });
     }
   }

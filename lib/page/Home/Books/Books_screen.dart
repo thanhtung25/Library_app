@@ -923,6 +923,7 @@ class _BooksScreenState extends State<BooksScreen> {
           itemBuilder: (context, i) => _SearchItem(
             book: books[i],
             user: widget.user,
+            bookCopy: _getCopy(context, books[i].id_book, copyByBook),
             authorFuture: _bookService.getAuthorByID(books[i].id_author),
             onReload: () => context.read<BookBloc>().add(GetBookEvent()),
             onReservationLoad: () => context.read<ReservationBloc>()
@@ -1011,6 +1012,7 @@ class _FilterDropChip extends StatelessWidget {
 class _SearchItem extends StatelessWidget {
   final BookModel book;
   final UserModel user;
+  final BookCopyModel bookCopy;
   final Future<AuthorModel> authorFuture;
   final VoidCallback onReload;
   final VoidCallback onReservationLoad;
@@ -1018,7 +1020,7 @@ class _SearchItem extends StatelessWidget {
   const _SearchItem({
     required this.book, required this.user,
     required this.authorFuture,
-    required this.onReload, required this.onReservationLoad,
+    required this.onReload, required this.onReservationLoad,required this.bookCopy,
   });
 
   static const Color _orange   = Color(0xffFF9E74);
@@ -1079,7 +1081,7 @@ class _SearchItem extends StatelessWidget {
                 const SizedBox(height: 10),
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   _chip(book.language.toUpperCase(), Icons.language_rounded),
-                  _chip('${book.publish_year}', Icons.calendar_today_rounded),
+                  _chip('${book.publish_year}', Icons.calendar_today_rounded),_statusChip(bookCopy.status),
                 ]),
               ])),
           const Icon(Icons.chevron_right_rounded,
@@ -1111,4 +1113,58 @@ class _SearchItem extends StatelessWidget {
           fontSize: 11, color: _orange, fontWeight: FontWeight.w600)),
     ]),
   );
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return Colors.green;
+      case 'borrowed':
+        return Colors.red;
+      case 'reserved':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'available':
+        return 'Доступный';
+      case 'borrowed':
+        return 'Заимствованный';
+      case 'reserved':
+        return 'Заказ размещен';
+      default:
+        return 'Не определено';
+    }
+  }
+
+  Widget _statusChip(String status) {
+    final color = _statusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 7, color: color),
+          const SizedBox(width: 5),
+          Text(
+            _statusLabel(status),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

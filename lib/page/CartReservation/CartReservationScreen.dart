@@ -234,14 +234,14 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
         await _loanService.addLoan(LoanModel(
           id_user: widget.userModel.id_user,
           id_copy: copy.id_copy!,
-          issue_date: now,
+          issue_date: selectedDate,
           return_date: returnDate,
-          status: 'borrowed',
+          status: 'reserved',
         ));
 
         // 4. Cập nhật trạng thái bản sao → 'borrowed'
         await _bookCopyService.updateBookCopy(
-          copy.copyWith(status: 'borrowed'),
+          copy.copyWith(status: 'reserved'),
         );
 
         // 5. Xóa reservation khỏi rổ
@@ -381,7 +381,63 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
                   }
                   if (state is ReservationError && !_booksLoadedOnce) {
                     return Center(
-                      child: Text("В корзине нет книг."),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 92,
+                              height: 92,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF3E8),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.shopping_bag_outlined,
+                                size: 42,
+                                color: Colors.orange.shade400,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Корзина пуста',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF3D2314),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'У вас пока нет забронированных книг.\nДобавьте книги в корзину, чтобы они появились здесь.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.5,
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 24),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF9E74).withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Text(
+                                '📚 Перейдите в каталог и выберите книгу',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFFFF9E74),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     );
                   }
                   if (state is ReservationLoaded &&

@@ -12,6 +12,11 @@ class LoanService {
     return LoanModel.fromJson(data);
   }
 
+  Future<List<LoanModel>> getLoansByUserId(int id_user) async {
+    final data = await ApiService.get('/loans-management/loan/user/$id_user');
+    return (data as List).map((e) => LoanModel.fromJson(e)).toList();
+  }
+
   Future<LoanModel> addLoan(LoanModel loan) async {
     final data = await ApiService.post('/loans-management/loan', loan.toJson());
     return LoanModel.fromJson(data);

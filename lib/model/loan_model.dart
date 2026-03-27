@@ -2,7 +2,7 @@ class LoanModel {
   final int? id_loan;
   final int id_user;
   final int id_copy;
-  final DateTime issue_date;
+  final DateTime? issue_date;
   final DateTime return_date;
   final DateTime? actual_return_date;
   final String status;
@@ -37,7 +37,7 @@ class LoanModel {
   Map<String, dynamic> toJson() {
     return {
       'id_loan': id_loan, 'id_user': id_user, 'id_copy': id_copy,
-      'issue_date': issue_date.toIso8601String().split('T')[0],
+      'issue_date': issue_date?.toIso8601String().split('T')[0],
       'return_date': return_date.toIso8601String().split('T')[0],
       'actual_return_date': actual_return_date?.toIso8601String().split('T')[0],
       'status': status, 'renewal_count': renewal_count,

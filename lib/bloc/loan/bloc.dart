@@ -10,6 +10,7 @@ class LoanBloc extends Bloc<LoanEvent, LoanState> {
   LoanBloc(this.loanService) : super(LoanInitial()) {
     on<GetAllLoansEvent>(_getAll);
     on<GetLoanByIdEvent>(_getById);
+    on<GetLoansByUserIdEvent>(_getByUserId);
     on<AddLoanEvent>(_add);
     on<UpdateLoanEvent>(_update);
     on<DeleteLoanEvent>(_delete);
@@ -24,6 +25,19 @@ class LoanBloc extends Bloc<LoanEvent, LoanState> {
       emit(LoanError(e.toString()));
     }
   }
+  Future<void> _getByUserId(
+      GetLoansByUserIdEvent event,
+      Emitter<LoanState> emit,
+      ) async {
+    emit(LoanLoading());
+    try {
+      final loans = await loanService.getLoansByUserId(event.id_user);
+      emit(LoanByUserSuccess(loans: loans));
+    } catch (e) {
+      emit(LoanError(e.toString()));
+    }
+  }
+
 
   Future<void> _getById(GetLoanByIdEvent event, Emitter<LoanState> emit) async {
     emit(LoanLoading());
