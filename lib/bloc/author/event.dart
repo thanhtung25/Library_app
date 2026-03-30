@@ -1,40 +1,43 @@
-import 'package:library_app/model/category_model.dart';
+abstract class AuthorEvent {}
 
-abstract class CategoryState {}
-
-class CategoryInitial extends CategoryState {}
-
-class CategoryLoading extends CategoryState {}
-
-class CategoryError extends CategoryState {
-  final String message;
-  CategoryError(this.message);
-}
+class InitEvent extends AuthorEvent {}
 
 // ─── GET ──────────────────────────────────────────────────────────────────────
 
-class CategorySuccess extends CategoryState {
-  final List<CategoryModel> category;
-  CategorySuccess(this.category);
+class GetAuthorByIdBookEvent extends AuthorEvent {
+  final int id_book;
+  GetAuthorByIdBookEvent({required this.id_book});
 }
+
+class GetAllAuthorsEvent extends AuthorEvent {}
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
-class CategoryCreatedSuccess extends CategoryState {
-  final CategoryModel category;
-  CategoryCreatedSuccess({required this.category});
+class CreateAuthorEvent extends AuthorEvent {
+  final String full_name;
+  final String biography;
+  CreateAuthorEvent({
+    required this.full_name,
+    required this.biography,
+  });
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 
-class CategoryUpdatedSuccess extends CategoryState {
-  final CategoryModel category;
-  CategoryUpdatedSuccess({required this.category});
+class UpdateAuthorEvent extends AuthorEvent {
+  final int id_author;
+  final String full_name;
+  final String biography;
+  UpdateAuthorEvent({
+    required this.id_author,
+    required this.full_name,
+    required this.biography,
+  });
 }
 
 // ─── DELETE ───────────────────────────────────────────────────────────────────
 
-class CategoryDeletedSuccess extends CategoryState {
-  final int id_category;
-  CategoryDeletedSuccess({required this.id_category});
+class DeleteAuthorEvent extends AuthorEvent {
+  final int id_author;
+  DeleteAuthorEvent({required this.id_author});
 }

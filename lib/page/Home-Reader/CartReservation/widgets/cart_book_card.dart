@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:library_app/model/book_model.dart';
 
+import '../../../../model/author_model.dart';
+
 class CartBookCard extends StatelessWidget {
   final String title;
   final String imagePath;

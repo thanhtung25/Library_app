@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../../model/book_model.dart';
 
 abstract class BookEvent {}
@@ -16,10 +18,7 @@ class GetBookByIdEvent extends BookEvent {
   GetBookByIdEvent({required this.id_book});
 }
 
-class GetAuthorByIdBookEvent extends BookEvent {
-  final int id_book;
-  GetAuthorByIdBookEvent({required this.id_book});
-}
+
 
 // ─── CREATE ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +71,16 @@ class UpdateBookEvent extends BookEvent {
     required this.description,
     required this.image_url,
     required this.created_at,
+  });
+}
+
+class UploadImgBookSubmitted extends BookEvent {
+  final int id_book;
+  final File imageFile;
+
+  UploadImgBookSubmitted({
+    required this.id_book,
+    required this.imageFile,
   });
 }
 // ─── DELETE ──────────────────────────────────────────────────────────────────

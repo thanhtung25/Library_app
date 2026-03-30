@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/AuthorService.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
@@ -18,6 +19,7 @@ import '../../../api_localhost/BookService.dart';
 import '../../../bloc/book_copy/bloc.dart';
 import '../../../bloc/book_copy/event.dart';
 import '../../../bloc/book_copy/state.dart';
+import '../../../model/author_model.dart';
 import '../../../model/book_copy_model.dart';
 import 'book_card.dart';
 
@@ -826,7 +828,7 @@ class _BooksScreenState extends State<BooksScreen> {
                     book: book,
                     user: widget.user,
                     bookCopy: _getCopy(context, book.id_book, copyByBook),
-                    authorFuture: _bookService.getAuthorByID(book.id_author),
+                    authorFuture: Authorservice().getAuthorByID(book.id_author),
                     onReload: () => context.read<BookBloc>()
                         .add(GetBookByCategoryEvent(category: catName)),
                     onReservationLoad: () => context.read<ReservationBloc>()
@@ -858,7 +860,7 @@ class _BooksScreenState extends State<BooksScreen> {
           book: book,
           user: widget.user,
           bookCopy: _getCopy(context, book.id_book, copyByBook),
-          authorFuture: _bookService.getAuthorByID(book.id_author),
+          authorFuture: Authorservice().getAuthorByID(book.id_author),
           onReload: onReload,
           onReservationLoad: () => context.read<ReservationBloc>()
               .add(GetReservationsByUserEvent(widget.user.id_user)),
@@ -924,7 +926,7 @@ class _BooksScreenState extends State<BooksScreen> {
             book: books[i],
             user: widget.user,
             bookCopy: _getCopy(context, books[i].id_book, copyByBook),
-            authorFuture: _bookService.getAuthorByID(books[i].id_author),
+            authorFuture: Authorservice().getAuthorByID(books[i].id_author),
             onReload: () => context.read<BookBloc>().add(GetBookEvent()),
             onReservationLoad: () => context.read<ReservationBloc>()
                 .add(GetReservationsByUserEvent(widget.user.id_user)),

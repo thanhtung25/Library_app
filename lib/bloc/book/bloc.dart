@@ -15,12 +15,12 @@ class BookBloc extends Bloc<BookEvent, BookState> {
     on<GetBookEvent>(_getBooks);
     on<GetBookByCategoryEvent>(_getBookByCategory);
     on<GetBookByIdEvent>(_getBookById);
-    on<GetAuthorByIdBookEvent>(_getAuthorByIdBook);
 
     // ─── CREATE / UPDATE / DELETE ──────────────────────────────────────────
     on<CreateBookEvent>(_createBook);
     on<UpdateBookEvent>(_updateBook);
     on<DeleteBookEvent>(_deleteBook);
+    on<UploadImgBookSubmitted>(_onUploadImgBookSubmitted);
 
   }
 
@@ -66,18 +66,7 @@ class BookBloc extends Bloc<BookEvent, BookState> {
     }
   }
 
-  Future<void> _getAuthorByIdBook(
-      GetAuthorByIdBookEvent event,
-      Emitter<BookState> emit,
-      ) async {
-    try {
-      final AuthorModel author =
-      await bookservice.getAuthorByID(event.id_book);
-      emit(AuthorLoadedState(author: author));
-    } catch (e) {
-      emit(BookError(e.toString()));
-    }
-  }
+
 
 
   // ─── CREATE ────────────────────────────────────────────────────────────────
@@ -134,6 +123,24 @@ class BookBloc extends Bloc<BookEvent, BookState> {
       emit(BookUpdatedSuccess(book: updatedBook));
     } catch (e) {
       emit(BookError(e.toString()));
+    }
+  }
+
+  Future<void> _onUploadImgBookSubmitted(
+      UploadImgBookSubmitted event,
+      Emitter<BookState> emit,
+      ) async {
+    emit(UploadImageLoading());
+
+    try {
+      final user = await bookservice.uploadImg(
+        id_book: event.id_book,
+        imageFile: event.imageFile,
+      );
+
+      emit(ImgBookUploadSuccess(user));
+    } catch (e) {
+      emit(BookError('Upload img failed: $e'));
     }
   }
 

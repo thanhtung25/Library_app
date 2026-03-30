@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/AuthorService.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
 import 'package:library_app/bloc/book_copy/bloc.dart';
@@ -16,6 +17,7 @@ import '../../../api_localhost/BookService.dart';
 import '../../../bloc/book/bloc.dart';
 import '../../../bloc/reservation/bloc.dart';
 import '../../../bloc/reservation/event.dart';
+import '../../../model/author_model.dart';
 import '../../../model/reservations_model.dart';
 
 class BookDetailScreen extends StatefulWidget {
@@ -88,7 +90,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     context.read<BookBloc>().add(GetBookByIdEvent(id_book: widget.bookModel.id_book));
     // ← GỌI BLoC ĐỂ LẤY DANH SÁCH BẢN SAO VÀ KIỂM TRA TRẠNG THÁI
     context.read<BookCopyBloc>().add(GetBookByIdBookEvent(id_book: widget.bookModel.id_book));
-    authorFuture = bookService().getAuthorByID(widget.bookModel.id_author);
+    authorFuture = Authorservice().getAuthorByID(widget.bookModel.id_author);
   }
 
   Color _statusColor(String status) {

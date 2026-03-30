@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/api_localhost/ApiService.dart';
+import 'package:library_app/bloc/author/bloc.dart';
+import 'package:library_app/bloc/author/state.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book_copy/event.dart' as copy_event;
 
+import '../../../bloc/author/event.dart';
 import '../../../bloc/book/bloc.dart';
 import '../../../bloc/book/state.dart';
 import '../../../bloc/book_copy/bloc.dart';
@@ -90,7 +93,7 @@ class _BookDetailManagerState extends State<BookDetailManager> {
         : 'available';
 
     // ── Lấy tên tác giả qua BLoC ──────────────────────────────────────────
-    context.read<BookBloc>().add(
+    context.read<AuthorBloc>().add(
       GetAuthorByIdBookEvent(id_book: b.id_book),
     );
   }
@@ -180,30 +183,38 @@ class _BookDetailManagerState extends State<BookDetailManager> {
           );
         }
       },
-      child: BlocConsumer<BookBloc, BookState>(
-        // ── Lắng nghe BookBloc ────────────────────────────────────────────
-        listener: (context, state) {
-          if (state is AuthorLoadedState) {
-            setState(() {
-              _authorName    = state.author.full_name;
-              _authorLoading = false;
-            });
-          }
-          if (state is BookUpdatedSuccess) {
-            setState(() => _bookUpdateDone = true);
-            _checkAllDone();
-          }
-          if (state is BookError) {
-            setState(() => _authorLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Ошибка: ${state.message}'),
-                backgroundColor: Colors.redAccent,
-              ),
-            );
-          }
+      // child: BlocConsumer<BookBloc, BookState>(
+      //   // ── Lắng nghe BookBloc ────────────────────────────────────────────
+      //   listener: (context, state) {
+      //     if (state is AuthorLoadedState) {
+      //       setState(() {
+      //         _authorName    = state.author.full_name;
+      //         _authorLoading = false;
+      //       });
+      //     }
+      //     if (state is BookUpdatedSuccess) {
+      //       setState(() => _bookUpdateDone = true);
+      //       _checkAllDone();
+      //     }
+      //     if (state is BookError) {
+      //       setState(() => _authorLoading = false);
+      //       ScaffoldMessenger.of(context).showSnackBar(
+      //         SnackBar(
+      //           content: Text('Ошибка: ${state.message}'),
+      //           backgroundColor: Colors.redAccent,
+      //         ),
+      //       );
+      //     }
+      //   },
+        child: BlocConsumer<AuthorBloc, AuthorState>
+          (listener: (context,state){
+            if(state is AuthorLoadedState){
+              setState(() {
+                _authorName = state.author.full_name;
+                _authorLoading = false;
+              });
+            }
         },
-
         // ── UI ─────────────────────────────────────────────────────────────
         builder: (context, state) {
           final isSaving = state is BookLoading;

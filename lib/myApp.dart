@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:library_app/api_localhost/AuthorService.dart';
 import 'package:library_app/api_localhost/BookCopyService.dart';
 import 'package:library_app/api_localhost/BookService.dart';
 import 'package:library_app/api_localhost/CategorySevice.dart';
 import 'package:library_app/api_localhost/FavoriteService.dart';
 import 'package:library_app/bloc/auth/bloc.dart';
+import 'package:library_app/bloc/author/bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book_copy/bloc.dart';
 import 'package:library_app/bloc/category/bloc.dart';
@@ -36,6 +38,7 @@ class _MyAppState extends State<MyApp> {
   final FavoriteService favoriteService = FavoriteService();
   final BookCopyService bookCopyService = BookCopyService();
   final LoanService loanService = LoanService();
+  final Authorservice authorservice = Authorservice();
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -62,6 +65,7 @@ class _MyAppState extends State<MyApp> {
             create: (_) => BookCopyBloc(bookCopyService),
             ),
             BlocProvider(create: (_) => LoanBloc(loanService)),
+            BlocProvider(create: (_) => AuthorBloc(authorservice)),
           ],
           child: MaterialApp(
             title: 'Library Management App',

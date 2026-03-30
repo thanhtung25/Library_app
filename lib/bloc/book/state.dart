@@ -31,10 +31,7 @@ class BookByIdSucces extends BookState {
   BookByIdSucces({required this.bookModel});
 }
 
-class AuthorLoadedState extends BookState {
-  final AuthorModel author;
-  AuthorLoadedState({required this.author});
-}
+
 
 // ─── CREATE ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +45,12 @@ class BookCreatedSuccess extends BookState {
 class BookUpdatedSuccess extends BookState {
   final BookModel book;
   BookUpdatedSuccess({required this.book});
+}
+
+class UploadImageLoading extends BookState {}
+class ImgBookUploadSuccess extends BookState {
+  final BookModel book;
+  ImgBookUploadSuccess(this.book);
 }
 
 // ─── DELETE ──────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/AuthorService.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
 import 'package:library_app/bloc/book_copy/event.dart';
@@ -43,6 +44,7 @@ class _HomeTabState extends State<HomeTab> {
 
   // ─── BookService instance ───────────────────────────────
   final bookService _bookService = bookService();
+  final Authorservice _authorservice = Authorservice();
 
   @override
   void initState() {
@@ -468,7 +470,7 @@ class _HomeTabState extends State<HomeTab> {
                         book: book,
                         user: widget.user,
                         bookCopy: bookCopy,
-                        authorFuture: _bookService.getAuthorByID(book.id_author),
+                        authorFuture: _authorservice.getAuthorByID(book.id_author),
                         onReload: () => context.read<BookBloc>().add(GetBookEvent()),
                         onReservationLoad: () => context.read<ReservationBloc>()
                             .add(GetReservationsByUserEvent(widget.user.id_user)),

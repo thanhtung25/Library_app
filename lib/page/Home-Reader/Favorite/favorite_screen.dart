@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/api_localhost/AuthorService.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/bloc/book/event.dart';
 import 'package:library_app/bloc/book/state.dart';
@@ -243,7 +244,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                       book: books[i],
                       user: widget.user,
                       bookCopy: _getCopy(context, books[i].id_book, copyByBook),
-                      authorFuture: bookService().getAuthorByID(books[i].id_author),
+                      authorFuture: Authorservice().getAuthorByID(books[i].id_author),
                       onReload: () {
                         context.read<BookBloc>().add(GetBookEvent());
                         context.read<BookCopyBloc>().add(GetBookCopyEvent());

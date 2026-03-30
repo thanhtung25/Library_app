@@ -7,6 +7,7 @@ import '../../../api_localhost/ApiService.dart';
 import '../../../bloc/favorite/bloc.dart';
 import '../../../bloc/favorite/event.dart';
 import '../../../bloc/favorite/state.dart';
+import '../../../model/author_model.dart';
 import '../../../model/book_model.dart';
 import '../../../model/book_copy_model.dart';
 import '../../../model/favorite_model.dart';

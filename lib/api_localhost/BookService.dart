@@ -1,4 +1,11 @@
 
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
+import 'package:mime/mime.dart';
+
 import '../model/book_model.dart';
 import 'ApiService.dart';
 
@@ -14,14 +21,6 @@ class bookService {
         .toList();
   }
 
-  Future<AuthorModel> getAuthorByID(
-      int id_author
-      )async {
-    final data = await ApiService.get(
-      "/authors-management/author/${id_author}",
-    );
-    return AuthorModel.fromJson(data);
-  }
 
   Future<List<BookModel>> getBookByCategory (
       String category
@@ -103,6 +102,48 @@ class bookService {
           });
       return BookModel.fromJson(data);
     }
+
+
+  Future<BookModel> uploadImg({
+    required int id_book,
+    required File imageFile,
+  }) async {
+    final uri = Uri.parse(
+      '${ApiService.baseUrl}/book-management/book/$id_book/image_book',
+    );
+
+    final request = http.MultipartRequest('PUT', uri);
+
+    final mimeType = lookupMimeType(imageFile.path)?.split('/');
+    final mediaType = mimeType != null && mimeType.length == 2
+        ? MediaType(mimeType[0], mimeType[1])
+        : MediaType('image', 'jpeg');
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'image_book',
+        imageFile.path,
+        contentType: mediaType,
+      ),
+    );
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Upload img thất bại: ${response.statusCode}\n${response.body}',
+      );
+    }
+
+    final data = jsonDecode(response.body);
+
+    if (data['book'] == null) {
+      throw Exception('Server không trả về book sau khi upload img');
+    }
+
+    return BookModel.fromJson(data['book']);
+  }
   // DELETE
   Future<void> deleteBook(
       int id_book

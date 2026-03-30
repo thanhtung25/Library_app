@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:library_app/bloc/author/bloc.dart';
 import 'package:library_app/bloc/book/bloc.dart';
 import 'package:library_app/localization/app_localizations.dart';
 import 'package:library_app/bloc/reservation/bloc.dart';
@@ -479,8 +480,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
             onSelect: () {},
             onDelete: () => _deleteReservationByBook(book),
             authorFuture: context
-                .read<BookBloc>()
-                .bookservice
+                .read<AuthorBloc>()
+                .authorservice
                 .getAuthorByID(book.id_author),
           ),
         )),
