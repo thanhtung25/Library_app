@@ -8,6 +8,26 @@ class GetBookByIdBookEvent extends BookCopyEvent {
   GetBookByIdBookEvent({required this.id_book});
 }
 
+class AddBookCopyEvent extends BookCopyEvent {
+  final int    id_book;
+  final String barcode;
+  final String qr_code;
+  final String location;
+  final DateTime received_date;
+  final String condition;
+  final String status;
+
+  AddBookCopyEvent({
+    required this.id_book,
+    required this.barcode,
+    required this.qr_code,
+    required this.location,
+    required this.received_date,
+    required this.condition,
+    required this.status,
+  });
+}
+
 class UpdateBookCopyEvent extends BookCopyEvent {
   final int    id_copy;
   final int    id_book;

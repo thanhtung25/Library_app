@@ -15,7 +15,7 @@ class LoanModel {
     required this.issue_date,
     required this.return_date,
     this.actual_return_date,
-    this.status = 'borrowed',
+    this.status = 'reserved',
     this.renewal_count = 0,
   });
 
@@ -29,7 +29,7 @@ class LoanModel {
       actual_return_date: json['actual_return_date'] != null
           ? DateTime.tryParse(json['actual_return_date'].toString())
           : null,
-      status: json['status'] ?? 'borrowed',
+      status: json['status'] ?? 'reserved',
       renewal_count: json['renewal_count'] ?? 0,
     );
   }

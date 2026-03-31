@@ -16,31 +16,29 @@ const _cardBg  = Color(0xffFFFFFF);
 const _divider = Color(0xffF0E0D0);
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Status & Condition maps  (khớp BookCopyModel)
+//  Status & Condition maps
 // ─────────────────────────────────────────────────────────────────────────────
 const _copyStatuses = ['available', 'borrowed', 'lost', 'maintenance'];
 const _copyStatusLabels = {
-  'available':   'Có sẵn',
-  'borrowed':    'Đang mượn',
-  'lost':        'Mất',
-  'maintenance': 'Bảo trì',
+  'available':   'Доступен',
+  'borrowed':    'Выдан',
+  'lost':        'Утерян',
+  'maintenance': 'На обслуживании',
 };
 
 const _conditions = ['new', 'good', 'fair', 'poor'];
 const _conditionLabels = {
-  'new':  'Mới',
-  'good': 'Tốt',
-  'fair': 'Bình thường',
-  'poor': 'Cũ / hỏng',
+  'new':  'Новый',
+  'good': 'Хорошее',
+  'fair': 'Среднее',
+  'poor': 'Изношенный',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  AddBookCopyScreen
 // ─────────────────────────────────────────────────────────────────────────────
 class AddBookCopyScreen extends StatefulWidget {
-  /// id_book của cuốn sách cha — bắt buộc truyền vào
   final int idBook;
-
   const AddBookCopyScreen({super.key, required this.idBook});
 
   @override
@@ -87,35 +85,40 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
     if (picked != null) setState(() => _receivedDate = picked);
   }
 
-  // // ── Submit ──────────────────────────────────────────────────────────────────
-  // void _submit() {
-  //   if (!_formKey.currentState!.validate()) return;
-  //   context.read<BookCopyBloc>().add(
-  //     BookCopySuccess(
-  //       id_book:       widget.idBook,
-  //       barcode:       _barcodeCtrl.text.trim(),
-  //       qr_code:       _qrCtrl.text.trim().isNotEmpty
-  //           ? _qrCtrl.text.trim()
-  //           : null,
-  //       location:      _locationCtrl.text.trim().isNotEmpty
-  //           ? _locationCtrl.text.trim()
-  //           : null,
-  //       received_date: _receivedDate,
-  //       condition:     _selectedCondition,
-  //       status:        _selectedStatus,
-  //     ),
-  //   );
-  // }
+  // ── Submit ──────────────────────────────────────────────────────────────────
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    if (_receivedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Пожалуйста, выберите дату получения'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    context.read<BookCopyBloc>().add(
+      AddBookCopyEvent(
+        id_book:       widget.idBook,
+        barcode:       _barcodeCtrl.text.trim(),
+        qr_code:       _qrCtrl.text.trim(),
+        location:      _locationCtrl.text.trim(),
+        received_date: _receivedDate!,
+        condition:     _selectedCondition,
+        status:        _selectedStatus,
+      ),
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<BookCopyBloc, BookCopyState>(
       listener: (context, state) {
-        if (state is BookCopySuccess) {
+        if (state is BookCopyAddedSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Thêm bản sao thành công!'),
+              content: Text('Экземпляр успешно добавлен!'),
               backgroundColor: _orange,
             ),
           );
@@ -124,7 +127,7 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
         if (state is BookCopyError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Lỗi: ${state.message}'),
+              content: Text('Ошибка: ${state.message}'),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -147,43 +150,49 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
                   _IdBookBadge(idBook: widget.idBook),
                   const SizedBox(height: 20),
 
-                  // ── Section: Mã định danh ────────────────────────────────
+                  // ── Section: Идентификаторы ──────────────────────────────
                   _SectionHeader(
                       icon: Icons.qr_code_scanner_rounded,
-                      label: 'Mã định danh'),
+                      label: 'Идентификаторы'),
                   const SizedBox(height: 12),
                   _buildCard([
                     _FormField(
                       controller: _barcodeCtrl,
-                      label: 'Barcode',
-                      hint: 'Nhập mã barcode',
-                      icon: Icons.barcode_reader,
+                      label: 'Штрих-код',
+                      hint:  'Введите штрих-код',
+                      icon:  Icons.barcode_reader,
                       validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Vui lòng nhập barcode'
+                          ? 'Введите штрих-код'
                           : null,
                     ),
                     _dividerLine(),
                     _FormField(
                       controller: _qrCtrl,
-                      label: 'QR Code (tuỳ chọn)',
-                      hint: 'Nhập mã QR hoặc để trống',
-                      icon: Icons.qr_code_2,
+                      label: 'QR-код',
+                      hint:  'Введите QR-код',
+                      icon:  Icons.qr_code_2,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Введите QR-код'
+                          : null,
                     ),
                   ]),
 
                   const SizedBox(height: 20),
 
-                  // ── Section: Vị trí & Ngày nhận ─────────────────────────
+                  // ── Section: Расположение и дата получения ───────────────
                   _SectionHeader(
                       icon: Icons.location_on_rounded,
-                      label: 'Vị trí & Ngày nhận'),
+                      label: 'Расположение и дата получения'),
                   const SizedBox(height: 12),
                   _buildCard([
                     _FormField(
                       controller: _locationCtrl,
-                      label: 'Vị trí kệ sách',
-                      hint: 'Ví dụ: Kệ A - Tầng 2',
-                      icon: Icons.shelves,
+                      label: 'Место на полке',
+                      hint:  'Например: Полка A - Этаж 2',
+                      icon:  Icons.shelves,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Введите место на полке'
+                          : null,
                     ),
                     _dividerLine(),
                     // Date picker row
@@ -201,7 +210,7 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Ngày nhận',
+                                  const Text('Дата получения',
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.black45)),
@@ -211,7 +220,7 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
                                         ? '${_receivedDate!.day.toString().padLeft(2, '0')}'
                                         '.${_receivedDate!.month.toString().padLeft(2, '0')}'
                                         '.${_receivedDate!.year}'
-                                        : 'Chọn ngày nhận',
+                                        : 'Выберите дату',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: _receivedDate != null
@@ -232,30 +241,28 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ── Section: Tình trạng & Trạng thái ────────────────────
+                  // ── Section: Состояние и статус ──────────────────────────
                   _SectionHeader(
                       icon: Icons.tune_rounded,
-                      label: 'Tình trạng & Trạng thái'),
+                      label: 'Состояние и статус'),
                   const SizedBox(height: 12),
                   _buildCard([
-                    // Condition dropdown
                     _DropdownRow(
-                      icon:     Icons.star_outline_rounded,
-                      label:    'Tình trạng',
-                      value:    _selectedCondition,
-                      items:    _conditions,
-                      labels:   _conditionLabels,
+                      icon:      Icons.star_outline_rounded,
+                      label:     'Состояние',
+                      value:     _selectedCondition,
+                      items:     _conditions,
+                      labels:    _conditionLabels,
                       onChanged: (v) =>
                           setState(() => _selectedCondition = v ?? 'new'),
                     ),
                     _dividerLine(),
-                    // Status dropdown
                     _DropdownRow(
-                      icon:     Icons.info_outline_rounded,
-                      label:    'Trạng thái',
-                      value:    _selectedStatus,
-                      items:    _copyStatuses,
-                      labels:   _copyStatusLabels,
+                      icon:      Icons.info_outline_rounded,
+                      label:     'Статус',
+                      value:     _selectedStatus,
+                      items:     _copyStatuses,
+                      labels:    _copyStatusLabels,
                       onChanged: (v) =>
                           setState(() => _selectedStatus = v ?? 'available'),
                     ),
@@ -265,9 +272,9 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
 
                   // ── Submit ───────────────────────────────────────────────
                   _SubmitButton(
-                    label:     'Thêm bản sao',
+                    label:     'Добавить экземпляр',
                     isLoading: isLoading,
-                    onPressed: (){},
+                    onPressed: _submit,
                   ),
                 ],
               ),
@@ -286,7 +293,7 @@ class _AddBookCopyScreenState extends State<AddBookCopyScreen> {
       onPressed: () => Navigator.pop(context),
     ),
     title: const Text(
-      'Thêm bản sao',
+      'Добавить экземпляр',
       style: TextStyle(
           color: _brown, fontWeight: FontWeight.bold, fontSize: 17),
     ),
@@ -320,12 +327,11 @@ class _IdBookBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding:
-    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     decoration: BoxDecoration(
-      color: _orange.withOpacity(0.13),
+      color:        _orange.withOpacity(0.13),
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: _orange.withOpacity(0.35)),
+      border:       Border.all(color: _orange.withOpacity(0.35)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -333,11 +339,9 @@ class _IdBookBadge extends StatelessWidget {
         const Icon(Icons.menu_book_rounded, color: _orange, size: 18),
         const SizedBox(width: 8),
         Text(
-          'Sách #$idBook',
+          'Книга #$idBook',
           style: const TextStyle(
-              color: _brown,
-              fontWeight: FontWeight.w600,
-              fontSize: 13),
+              color: _brown, fontWeight: FontWeight.w600, fontSize: 13),
         ),
       ],
     ),
@@ -372,16 +376,14 @@ class _DropdownRow extends StatelessWidget {
           child: DropdownButtonFormField<String>(
             value: value,
             decoration: InputDecoration(
-              labelText:  label,
-              labelStyle: const TextStyle(
-                  fontSize: 12, color: Colors.black45),
+              labelText:      label,
+              labelStyle:     const TextStyle(fontSize: 12, color: Colors.black45),
               border:         InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.keyboard_arrow_down,
                 color: _orange, size: 20),
-            style: const TextStyle(
-                fontSize: 14, color: Colors.black87),
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
             items: items
                 .map((s) => DropdownMenuItem(
               value: s,
@@ -397,7 +399,7 @@ class _DropdownRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Shared helper widgets  (copy từ AddBookScreen để file độc lập)
+//  Shared helper widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
@@ -411,7 +413,7 @@ class _SectionHeader extends StatelessWidget {
       Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: _orange.withOpacity(0.15),
+          color:        _orange.withOpacity(0.15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: _orange, size: 16),
@@ -419,9 +421,7 @@ class _SectionHeader extends StatelessWidget {
       const SizedBox(width: 8),
       Text(label,
           style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              color: _brown)),
+              fontWeight: FontWeight.bold, fontSize: 14, color: _brown)),
     ],
   );
 }
@@ -441,8 +441,8 @@ class _FormField extends StatelessWidget {
     required this.label,
     required this.hint,
     required this.icon,
-    this.maxLines = 1,
-    this.readOnly = false,
+    this.maxLines    = 1,
+    this.readOnly    = false,
     this.keyboardType,
     this.validator,
   });
@@ -469,15 +469,13 @@ class _FormField extends StatelessWidget {
             validator:    validator,
             style: const TextStyle(fontSize: 14, color: Colors.black87),
             decoration: InputDecoration(
-              labelText:  label,
-              labelStyle: const TextStyle(
-                  fontSize: 12, color: Colors.black45),
-              hintText:  hint,
-              hintStyle: const TextStyle(
-                  color: Colors.black26, fontSize: 13),
+              labelText:      label,
+              labelStyle:     const TextStyle(fontSize: 12, color: Colors.black45),
+              hintText:       hint,
+              hintStyle:      const TextStyle(color: Colors.black26, fontSize: 13),
               border:         InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              errorStyle: const TextStyle(fontSize: 11),
+              errorStyle:     const TextStyle(fontSize: 11),
             ),
           ),
         ),
@@ -490,28 +488,29 @@ class _SubmitButton extends StatelessWidget {
   final String label;
   final bool isLoading;
   final VoidCallback onPressed;
-  const _SubmitButton(
-      {required this.label,
-        required this.isLoading,
-        required this.onPressed});
+  const _SubmitButton({
+    required this.label,
+    required this.isLoading,
+    required this.onPressed,
+  });
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: double.infinity,
+    width:  double.infinity,
     height: 52,
     child: ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: _orange,
-        elevation: 2,
+        elevation:       2,
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14)),
       ),
       onPressed: isLoading ? null : onPressed,
       child: isLoading
           ? const SizedBox(
-          width: 22,
+          width:  22,
           height: 22,
-          child: CircularProgressIndicator(
+          child:  CircularProgressIndicator(
               color: _white, strokeWidth: 2.5))
           : Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -521,9 +520,9 @@ class _SubmitButton extends StatelessWidget {
           const SizedBox(width: 8),
           Text(label,
               style: const TextStyle(
-                  color: _white,
+                  color:      _white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15)),
+                  fontSize:   15)),
         ],
       ),
     ),

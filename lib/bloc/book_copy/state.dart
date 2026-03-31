@@ -27,3 +27,7 @@ class BookCopyUpdatedSuccess extends BookCopyState {
   final BookCopyModel bookCopy;
   BookCopyUpdatedSuccess({required this.bookCopy});
 }
+class BookCopyAddedSuccess extends BookCopyState {
+  final BookCopyModel bookCopy;
+  BookCopyAddedSuccess({required this.bookCopy});
+}

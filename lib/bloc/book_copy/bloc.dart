@@ -12,6 +12,7 @@ class BookCopyBloc extends Bloc<BookCopyEvent, BookCopyState> {
   BookCopyBloc(this.bookCopyService) : super(BookCopyInitial()) {
     on<GetBookCopyEvent>(_getBookCopy);
     on<GetBookByIdBookEvent>(_getBookByIdBook);
+    on<AddBookCopyEvent>(_addBookCopy);
     on<UpdateBookCopyEvent>(_updateBookCopy);
 
   }
@@ -46,6 +47,32 @@ class BookCopyBloc extends Bloc<BookCopyEvent, BookCopyState> {
         Map.from(_booksByIdBook),
         _allBookCopy,
       ));
+    } catch (e) {
+      emit(BookCopyError(e.toString()));
+    }
+  }
+  // CREATE
+  Future<void> _addBookCopy(
+      AddBookCopyEvent event,
+      Emitter<BookCopyState> emit,
+      ) async {
+    emit(BookCopyLoading());
+    try {
+      final newCopy = BookCopyModel(
+        id_book:       event.id_book,
+        barcode:       event.barcode,
+        qr_code:       event.qr_code,
+        location:      event.location,
+        received_date: event.received_date,
+        condition:     event.condition,
+        status:        event.status,
+      );
+      final result = await bookCopyService.addBookCopy(newCopy);
+      _allBookCopy = [..._allBookCopy, result];
+      if (_booksByIdBook.containsKey(event.id_book)) {
+        _booksByIdBook[event.id_book] = [..._booksByIdBook[event.id_book]!, result];
+      }
+      emit(BookCopyAddedSuccess(bookCopy: result));
     } catch (e) {
       emit(BookCopyError(e.toString()));
     }

@@ -1,39 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:library_app/api_localhost/ApiService.dart';
 import 'package:library_app/model/user_model.dart';
+import 'loan_item.dart';
+import 'loan_constants.dart';
+import 'loan_dialogs.dart';
+import 'loan_widgets.dart';
 
-// ─── Model ────────────────────────────────────────────────────────────────────
-class _Loan {
-  final int idLoan;
-  final String idUser;
-  final String idBook;
-  final String issueDate;
-  final String returnDate;
-  final String? actualReturn;
-  final String status; // 'borrowed' | 'returned' | 'overdue'
-
-  _Loan({
-    required this.idLoan,
-    required this.idUser,
-    required this.idBook,
-    required this.issueDate,
-    required this.returnDate,
-    this.actualReturn,
-    required this.status,
-  });
-
-  factory _Loan.fromJson(Map<String, dynamic> j) => _Loan(
-    idLoan: j['id_loan'] ?? 0,
-    idUser: j['id_user']?.toString() ?? '',
-    idBook: j['id_book']?.toString() ?? '',
-    issueDate: j['issue_date'] ?? '',
-    returnDate: j['return_date'] ?? '',
-    actualReturn: j['actual_return'],
-    status: j['status'] ?? 'borrowed',
-  );
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 class LoanManagementScreen extends StatefulWidget {
   final UserModel user;
   const LoanManagementScreen({super.key, required this.user});
@@ -44,21 +16,18 @@ class LoanManagementScreen extends StatefulWidget {
 
 class _LoanManagementScreenState extends State<LoanManagementScreen>
     with SingleTickerProviderStateMixin {
-  static const _orange = Color(0xffFF9E74);
-  static const _bg     = Color(0xffFBEEE4);
 
   late final TabController _tabCtrl;
   final _searchCtrl = TextEditingController();
 
-  List<_Loan> _loans    = [];
-  List<_Loan> _filtered = [];
-  bool   _loading = true;
+  List<LoanItem> _loans = [], _filtered = [];
+  bool    _loading = true;
   String? _error;
 
-  // Tab labels & matching status values
-  static const _tabs = ['Tất cả', 'Đang mượn', 'Đã trả', 'Quá hạn'];
-  static const _statuses = ['all', 'borrowed', 'returned', 'overdue'];
+  static const _tabs     = ['Tất cả', 'Đặt trước', 'Đang mượn', 'Đã trả', 'Quá hạn'];
+  static const _statuses = ['all', 'reserved', 'borrowed', 'returned', 'overdue'];
 
+  // ── Lifecycle ────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -74,14 +43,16 @@ class _LoanManagementScreenState extends State<LoanManagementScreen>
     super.dispose();
   }
 
+  // ── Data ─────────────────────────────────────────────────────────────────
   Future<void> _fetchLoans() async {
     setState(() { _loading = true; _error = null; });
     try {
       final data = await ApiService.get('/loans-management/loans');
-      final list = (data['loans'] as List? ?? data as List)
-          .map((e) => _Loan.fromJson(e as Map<String, dynamic>))
-          .toList();
-      setState(() { _loans = list; _loading = false; });
+      final raw  = data is List ? data : (data['loans'] as List? ?? []);
+      setState(() {
+        _loans   = raw.map((e) => LoanItem.fromJson(e as Map<String, dynamic>)).toList();
+        _loading = false;
+      });
       _applyFilter();
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -93,285 +64,240 @@ class _LoanManagementScreenState extends State<LoanManagementScreen>
     final status = _statuses[_tabCtrl.index];
     setState(() {
       _filtered = _loans.where((l) {
-        final matchStatus = status == 'all' || l.status == status;
-        final matchSearch = q.isEmpty ||
-            l.idUser.toLowerCase().contains(q) ||
-            l.idBook.toLowerCase().contains(q);
-        return matchStatus && matchSearch;
+        final matchSt = status == 'all' || l.status == status;
+        final matchQ  = q.isEmpty ||
+            l.idUser.toString().contains(q) ||
+            l.idCopy.toString().contains(q) ||
+            l.idLoan.toString().contains(q);
+        return matchSt && matchQ;
       }).toList();
     });
   }
 
-  // ── Mark as returned ──────────────────────────────────────────────────────
-  Future<void> _markReturned(_Loan loan) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận trả sách',
-            style: TextStyle(fontFamily: 'Times New Roman')),
-        content: Text('Xác nhận người dùng ${loan.idUser} đã trả sách?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Huỷ')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _orange),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+  // ── Actions ──────────────────────────────────────────────────────────────
+
+  Future<void> _confirmBorrow(LoanItem loan) async {
+    Map<String, dynamic>? copy;
+    try {
+      copy = await ApiService.get(
+          '/book_copies-management/book_copy/${loan.idCopy}');
+    } catch (_) {}
+
+    if (!mounted) return;
+    final ok = await showConfirmBorrowDialog(
+      context, loan,
+      barcode: copy?['barcode']?.toString() ?? '',
+      qrVal:   copy?['qr_code']?.toString()  ?? copy?['barcode']?.toString() ?? '',
     );
-    if (confirm == true) {
-      try {
-        await ApiService.put('/loans-management/loan/${loan.idLoan}',
-            {'status': 'returned'});
-        _fetchLoans();
-      } catch (e) {
-        _showError(e.toString());
-      }
-    }
+    if (ok != true) return;
+
+    try {
+      await ApiService.put('/loans-management/loan/${loan.idLoan}',
+          {'status': 'borrowed'});
+      await ApiService.post('/notifications-management/notification', {
+        'id_user': loan.idUser,
+        'type':    'loan_ready',
+        'message': 'Phiếu mượn #${loan.idLoan}: Bạn đã nhận bản sao '
+            '#${loan.idCopy}. Hạn trả: ${loan.returnDate}.',
+      });
+      _showSuccess('Đã xác nhận phát sách và gửi thông báo!');
+      _fetchLoans();
+    } catch (e) { _showError(e.toString()); }
   }
 
-  // ── Add new loan dialog ───────────────────────────────────────────────────
-  Future<void> _showAddLoanDialog() async {
-    final userCtrl       = TextEditingController();
-    final bookCtrl       = TextEditingController();
-    final issueDateCtrl  = TextEditingController();
-    final returnDateCtrl = TextEditingController();
+  Future<void> _handleOverdue(LoanItem loan) async {
+    final ok = await showOverdueDialog(context, loan);
+    if (ok != true) return;
 
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tạo phiếu mượn',
-            style: TextStyle(fontFamily: 'Times New Roman', color: _orange)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _dialogField(userCtrl,       'ID Người dùng', TextInputType.number),
-            const SizedBox(height: 10),
-            _dialogField(bookCtrl,       'ID Sách',       TextInputType.number),
-            const SizedBox(height: 10),
-            _dialogField(issueDateCtrl,  'Ngày mượn (dd/mm/yyyy)', TextInputType.datetime),
-            const SizedBox(height: 10),
-            _dialogField(returnDateCtrl, 'Hạn trả (dd/mm/yyyy)',   TextInputType.datetime),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx),
-              child: const Text('Huỷ', style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: _orange),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await ApiService.post('/loans-management/loan', {
-                  'id_user':     int.tryParse(userCtrl.text.trim()),
-                  'id_book':     int.tryParse(bookCtrl.text.trim()),
-                  'issue_date':  issueDateCtrl.text.trim(),
-                  'return_date': returnDateCtrl.text.trim(),
-                  'status':      'borrowed',
-                });
-                _fetchLoans();
-              } catch (e) {
-                _showError(e.toString());
-              }
-            },
-            child: const Text('Tạo', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+    try {
+      final days   = loan.daysOverdue;
+      final amount = days * kFinePerDay;
+      await ApiService.post('/fines-management/fine', {
+        'id_loan':    loan.idLoan,
+        'amount':     amount,
+        'reason':     'Trả sách quá hạn $days ngày (hạn: ${loan.returnDate})',
+        'created_at': loanTodayStr(),
+        'status':     'unpaid',
+      });
+      await ApiService.post('/notifications-management/notification', {
+        'id_user': loan.idUser,
+        'type':    'overdue',
+        'message': 'Phiếu mượn #${loan.idLoan} quá hạn $days ngày. '
+            'Tiền phạt: ${loanFormatMoney(amount)} VNĐ. '
+            'Vui lòng trả sách và thanh toán ngay.',
+      });
+      _showSuccess('Đã tạo phạt ${loanFormatMoney(amount)} VNĐ và gửi thông báo!');
+      _fetchLoans();
+    } catch (e) { _showError(e.toString()); }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+  Future<void> _sendDueSoon(LoanItem loan) async {
+    final ok = await showDueSoonDialog(context, loan);
+    if (ok != true) return;
+
+    try {
+      final days = loan.daysUntilReturn;
+      await ApiService.post('/notifications-management/notification', {
+        'id_user': loan.idUser,
+        'type':    'due_soon',
+        'message': days == 0
+            ? 'Phiếu mượn #${loan.idLoan}: Hôm nay là ngày cuối hạn trả '
+            'bản sao #${loan.idCopy}. Vui lòng trả ngay!'
+            : 'Phiếu mượn #${loan.idLoan}: Còn $days ngày đến hạn trả '
+            'bản sao #${loan.idCopy} (hạn: ${loan.returnDate}).',
+      });
+      _showSuccess('Đã gửi thông báo nhắc hạn!');
+    } catch (e) { _showError(e.toString()); }
   }
 
-  // ─── Build ─────────────────────────────────────────────────────────────────
+  Future<void> _markReturned(LoanItem loan) async {
+    final ok = await showMarkReturnedDialog(context, loan);
+    if (ok != true) return;
+    try {
+      await ApiService.put('/loans-management/loan/${loan.idLoan}', {
+        'status':             'returned',
+        'actual_return_date': loanTodayStr(),
+      });
+      _fetchLoans();
+    } catch (e) { _showError(e.toString()); }
+  }
+
+  Future<void> _deleteLoan(LoanItem loan) async {
+    final ok = await showDeleteLoanDialog(context, loan);
+    if (ok != true) return;
+    try {
+      await ApiService.delete('/loans-management/loan/${loan.idLoan}');
+      _fetchLoans();
+    } catch (e) { _showError(e.toString()); }
+  }
+
+  Future<void> _addLoan() async {
+    final data = await showAddLoanFormDialog(context);
+    if (data == null) return;
+    try {
+      await ApiService.post('/loans-management/loan', data);
+      _fetchLoans();
+    } catch (e) { _showError(e.toString()); }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: kLoanBg,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: _bg,
+        backgroundColor: kLoanBg,
         elevation: 0,
-        title: const Text(
-          'Quản lý Mượn / Trả',
-          style: TextStyle(
-            fontFamily: 'Times New Roman',
-            fontWeight: FontWeight.bold,
-            color: _orange,
-            fontSize: 22,
-          ),
-        ),
+        title: const Text('Quản lý Mượn / Trả',
+            style: TextStyle(
+                fontFamily: 'Times New Roman',
+                fontWeight: FontWeight.bold,
+                color: kLoanOrange,
+                fontSize: 22)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: _orange),
-            onPressed: _fetchLoans,
-          ),
+              icon: const Icon(Icons.refresh, color: kLoanOrange),
+              onPressed: _fetchLoans),
         ],
         bottom: TabBar(
           controller: _tabCtrl,
-          labelColor: _orange,
+          labelColor: kLoanOrange,
           unselectedLabelColor: Colors.grey,
-          indicatorColor: _orange,
+          indicatorColor: kLoanOrange,
+          isScrollable: true,
           labelStyle: const TextStyle(
               fontFamily: 'Times New Roman', fontWeight: FontWeight.bold),
           tabs: _tabs.map((t) => Tab(text: t)).toList(),
         ),
       ),
 
-      body: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (_) => _applyFilter(),
-              decoration: InputDecoration(
-                hintText: 'Tìm theo ID người dùng / ID sách...',
-                prefixIcon: const Icon(Icons.search, color: _orange),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                border: OutlineInputBorder(
+      body: Column(children: [
+        // Search
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: TextField(
+            controller: _searchCtrl,
+            onChanged: (_) => _applyFilter(),
+            decoration: InputDecoration(
+              hintText: 'Tìm theo ID phiếu / người dùng / bản sao...',
+              prefixIcon: const Icon(Icons.search, color: kLoanOrange),
+              filled: true, fillColor: Colors.white,
+              contentPadding:
+              const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+              border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
+                  borderSide: BorderSide.none),
+            ),
+          ),
+        ),
+
+        // Summary chips
+        if (!_loading && _error == null)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, bottom: 6),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                LoanChip('Tổng: ${_loans.length}',                Colors.blueGrey),
+                const SizedBox(width: 6),
+                LoanChip('Đặt trước: ${_cnt("reserved")}',       Colors.purple),
+                const SizedBox(width: 6),
+                LoanChip('Đang mượn: ${_cnt("borrowed")}',       Colors.orange),
+                const SizedBox(width: 6),
+                LoanChip('Quá hạn: ${_cnt("overdue")}',          Colors.red),
+                const SizedBox(width: 6),
+                LoanChip('Sắp hạn: ${_loans.where((l) => l.isNearDeadline).length}',
+                    const Color(0xffE65100)),
+              ]),
             ),
           ),
 
-          // Table header
-          _tableHeader(),
+        const LoanTableHeader(),
 
-          // Rows
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: _orange))
-                : _error != null
-                ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
-                : _filtered.isEmpty
-                ? const Center(child: Text('Không có dữ liệu'))
-                : RefreshIndicator(
-              onRefresh: _fetchLoans,
-              color: _orange,
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                itemBuilder: (_, i) => _loanRow(_filtered[i]),
-              ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(color: kLoanOrange))
+              : _error != null
+              ? Center(child: Text(_error!,
+              style: const TextStyle(color: Colors.red)))
+              : _filtered.isEmpty
+              ? const Center(child: Text('Không có dữ liệu'))
+              : RefreshIndicator(
+            onRefresh: _fetchLoans,
+            color: kLoanOrange,
+            child: ListView.builder(
+              itemCount: _filtered.length,
+              itemBuilder: (_, i) {
+                final loan = _filtered[i];
+                return LoanRow(
+                  loan:            loan,
+                  onTap:           () => showLoanDetailSheet(context, loan),
+                  onConfirmBorrow: () => _confirmBorrow(loan),
+                  onDueSoon:       () => _sendDueSoon(loan),
+                  onOverdue:       () => _handleOverdue(loan),
+                  onMarkReturn:    () => _markReturned(loan),
+                  onDelete:        () => _deleteLoan(loan),
+                );
+              },
             ),
           ),
-        ],
-      ),
+        ),
+      ]),
 
       floatingActionButton: FloatingActionButton(
-        backgroundColor: _orange,
-        onPressed: _showAddLoanDialog,
+        backgroundColor: kLoanOrange,
+        onPressed: _addLoan,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  Widget _tableHeader() {
-    return Container(
-      color: _orange,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: const Row(
-        children: [
-          Expanded(flex: 1, child: _H('ID')),
-          Expanded(flex: 2, child: _H('ID Sách')),
-          Expanded(flex: 2, child: _H('Ngày mượn')),
-          Expanded(flex: 2, child: _H('Hạn trả')),
-          Expanded(flex: 2, child: _H('Trạng thái')),
-          SizedBox(width: 36),
-        ],
-      ),
-    );
-  }
+  int _cnt(String s) => _loans.where((l) => l.status == s).length;
 
-  Widget _loanRow(_Loan loan) {
-    Color statusColor;
-    switch (loan.status) {
-      case 'returned': statusColor = Colors.green;  break;
-      case 'overdue':  statusColor = Colors.red;    break;
-      default:         statusColor = Colors.orange;
-    }
-    final statusLabel = {
-      'borrowed': 'Đang mượn',
-      'returned': 'Đã trả',
-      'overdue':  'Quá hạn',
-    }[loan.status] ?? loan.status;
+  void _showError(String msg) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
 
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        children: [
-          Expanded(flex: 1, child: _cell(loan.idUser)),
-          Expanded(flex: 2, child: _cell(loan.idBook)),
-          Expanded(flex: 2, child: _cell(loan.issueDate)),
-          Expanded(flex: 2, child: _cell(loan.returnDate)),
-          Expanded(
-            flex: 2,
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(statusLabel,
-                  style: TextStyle(color: statusColor, fontSize: 11,
-                      fontWeight: FontWeight.bold)),
-            ),
-          ),
-          if (loan.status == 'borrowed')
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline,
-                  color: Colors.green, size: 20),
-              tooltip: 'Đánh dấu đã trả',
-              onPressed: () => _markReturned(loan),
-            )
-          else
-            const SizedBox(width: 36),
-        ],
-      ),
-    );
-  }
-
-  Widget _cell(String text) => Padding(
-    padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-    child: Text(text, style: const TextStyle(fontSize: 12)),
-  );
-
-  TextField _dialogField(TextEditingController ctrl, String label,
-      TextInputType type) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: type,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: _orange)),
-      ),
-    );
-  }
-}
-
-class _H extends StatelessWidget {
-  final String t;
-  const _H(this.t);
-  @override
-  Widget build(BuildContext context) => Text(t,
-      style: const TextStyle(color: Colors.white,
-          fontWeight: FontWeight.bold, fontSize: 12));
+  void _showSuccess(String msg) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.green));
 }
