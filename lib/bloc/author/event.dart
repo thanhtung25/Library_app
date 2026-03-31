@@ -5,8 +5,8 @@ class InitEvent extends AuthorEvent {}
 // ─── GET ──────────────────────────────────────────────────────────────────────
 
 class GetAuthorByIdBookEvent extends AuthorEvent {
-  final int id_book;
-  GetAuthorByIdBookEvent({required this.id_book});
+  final int id_author;
+  GetAuthorByIdBookEvent({required this.id_author});
 }
 
 class GetAllAuthorsEvent extends AuthorEvent {}

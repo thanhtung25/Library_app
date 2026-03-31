@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/api_localhost/ApiService.dart';
 import 'package:library_app/bloc/author/bloc.dart';
@@ -52,6 +55,11 @@ class _BookDetailManagerState extends State<BookDetailManager> {
   String? _authorName;
   bool    _authorLoading = true;
 
+  // ── Image upload ───────────────────────────────────────────────────────────
+  final ImagePicker _picker = ImagePicker();
+  File? _pickedImageFile;
+  bool  _imageUploading = false;
+
   // Trạng thái của BookCopy (khớp với giá trị status trong BookCopyModel)
   static const _copyStatuses = [
     'available',
@@ -94,7 +102,7 @@ class _BookDetailManagerState extends State<BookDetailManager> {
 
     // ── Lấy tên tác giả qua BLoC ──────────────────────────────────────────
     context.read<AuthorBloc>().add(
-      GetAuthorByIdBookEvent(id_book: b.id_book),
+      GetAuthorByIdBookEvent(id_author: b.id_author),
     );
   }
 
@@ -165,138 +173,191 @@ class _BookDetailManagerState extends State<BookDetailManager> {
     }
   }
 
+  // ── Pick & upload image ───────────────────────────────────────────────────
+  Future<void> _pickAndUploadImage() async {
+    final XFile? picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
+    if (picked == null) return;
+    final file = File(picked.path);
+    setState(() {
+      _pickedImageFile = file;
+      _imageUploading  = true;
+    });
+    context.read<BookBloc>().add(
+      UploadImgBookSubmitted(
+        id_book:   widget.book.id_book,
+        imageFile: file,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocListener<BookCopyBloc, copy_state.BookCopyState>(
-      // ── Lắng nghe BookCopyBloc ──────────────────────────────────────────
-      listener: (context, copyState) {
-        if (copyState is copy_state.BookCopyUpdatedSuccess) {
-          setState(() => _copyDoneCount++);
-          _checkAllDone();
-        }
-        if (copyState is copy_state.BookCopyError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка экземпляра: ${copyState.message}'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-      },
-      // child: BlocConsumer<BookBloc, BookState>(
-      //   // ── Lắng nghe BookBloc ────────────────────────────────────────────
-      //   listener: (context, state) {
-      //     if (state is AuthorLoadedState) {
-      //       setState(() {
-      //         _authorName    = state.author.full_name;
-      //         _authorLoading = false;
-      //       });
-      //     }
-      //     if (state is BookUpdatedSuccess) {
-      //       setState(() => _bookUpdateDone = true);
-      //       _checkAllDone();
-      //     }
-      //     if (state is BookError) {
-      //       setState(() => _authorLoading = false);
-      //       ScaffoldMessenger.of(context).showSnackBar(
-      //         SnackBar(
-      //           content: Text('Ошибка: ${state.message}'),
-      //           backgroundColor: Colors.redAccent,
-      //         ),
-      //       );
-      //     }
-      //   },
-        child: BlocConsumer<AuthorBloc, AuthorState>
-          (listener: (context,state){
+    return MultiBlocListener(
+        listeners: [
+          // Lắng nghe kết quả upload ảnh + update sách từ BookBloc
+          BlocListener<BookBloc, BookState>(
+            listener: (context, state) {
+              if (state is ImgBookUploadSuccess) {
+                setState(() => _imageUploading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Ảnh đã được cập nhật!'),
+                    backgroundColor: _orange,
+                  ),
+                );
+              }
+              if (state is BookUpdatedSuccess) {
+                setState(() => _bookUpdateDone = true);
+                _checkAllDone();
+              }
+              if (state is BookError) {
+                setState(() => _imageUploading = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Ошибка: ${state.message}'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+        child: BlocListener<BookCopyBloc, copy_state.BookCopyState>(
+          // ── Lắng nghe BookCopyBloc ──────────────────────────────────────────
+          listener: (context, copyState) {
+            if (copyState is copy_state.BookCopyUpdatedSuccess) {
+              setState(() => _copyDoneCount++);
+              _checkAllDone();
+            }
+            if (copyState is copy_state.BookCopyError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Ошибка экземпляра: ${copyState.message}'),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
+            }
+          },
+          // child: BlocConsumer<BookBloc, BookState>(
+          //   // ── Lắng nghe BookBloc ────────────────────────────────────────────
+          //   listener: (context, state) {
+          //     if (state is AuthorLoadedState) {
+          //       setState(() {
+          //         _authorName    = state.author.full_name;
+          //         _authorLoading = false;
+          //       });
+          //     }
+          //     if (state is BookUpdatedSuccess) {
+          //       setState(() => _bookUpdateDone = true);
+          //       _checkAllDone();
+          //     }
+          //     if (state is BookError) {
+          //       setState(() => _authorLoading = false);
+          //       ScaffoldMessenger.of(context).showSnackBar(
+          //         SnackBar(
+          //           content: Text('Ошибка: ${state.message}'),
+          //           backgroundColor: Colors.redAccent,
+          //         ),
+          //       );
+          //     }
+          //   },
+          child: BlocConsumer<AuthorBloc, AuthorState>
+            (listener: (context,state){
             if(state is AuthorLoadedState){
               setState(() {
                 _authorName = state.author.full_name;
                 _authorLoading = false;
               });
             }
-        },
-        // ── UI ─────────────────────────────────────────────────────────────
-        builder: (context, state) {
-          final isSaving = state is BookLoading;
+          },
+            // ── UI ─────────────────────────────────────────────────────────────
+            builder: (context, state) {
+              final isSaving = state is BookLoading;
 
-          return Scaffold(
-            backgroundColor: _bg,
-            appBar: _buildAppBar(isSaving),
-            body: SingleChildScrollView(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildCoverRow(),
-                  const SizedBox(height: 24),
+              return Scaffold(
+                backgroundColor: _bg,
+                appBar: _buildAppBar(isSaving),
+                body: SingleChildScrollView(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildCoverRow(),
+                      const SizedBox(height: 24),
 
-                  _FieldLabel('Название книги:'),
-                  _EditField(controller: _titleCtrl, hint: 'Введите название книги'),
-                  const SizedBox(height: 14),
+                      _FieldLabel('Название книги:'),
+                      _EditField(controller: _titleCtrl, hint: 'Введите название книги'),
+                      const SizedBox(height: 14),
 
-                  _FieldLabel('Автор:'),
-                  _authorLoading
-                      ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 10),
-                    child: LinearProgressIndicator(color: _orange),
-                  )
-                      : _EditField(
-                    controller: TextEditingController(text: _authorName ?? '—'),
-                    hint: 'Автор',
-                    readOnly: true,
+                      _FieldLabel('Автор:'),
+                      _authorLoading
+                          ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: LinearProgressIndicator(color: _orange),
+                      )
+                          : _EditField(
+                        controller: TextEditingController(text: _authorName ?? '—'),
+                        hint: 'Автор',
+                        readOnly: true,
+                      ),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('ISBN:'),
+                      _EditField(controller: _isbnCtrl, hint: 'Импорт ISBN'),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('Язык:'),
+                      _EditField(controller: _languageCtrl, hint: 'Язык'),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('Год публикации:'),
+                      _EditField(
+                        controller: _yearCtrl,
+                        hint: 'Год',
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('Количество экземпляров:'),
+                      _EditField(
+                        controller: _quantityCtrl,
+                        hint: '0',
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                      ),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('Статус:'),
+                      _StatusDropdown(
+                        value:     _selectedCopyStatus,
+                        items:     _copyStatuses,
+                        labels:    _copyStatusLabels,
+                        onChanged: (v) => setState(
+                                () => _selectedCopyStatus = v ?? 'available'),
+                      ),
+                      const SizedBox(height: 14),
+
+                      _FieldLabel('Описывать:'),
+                      _EditField(
+                        controller: _descCtrl,
+                        hint: 'Введите описание книги…',
+                        maxLines: 5,
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                   ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('ISBN:'),
-                  _EditField(controller: _isbnCtrl, hint: 'Импорт ISBN'),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Язык:'),
-                  _EditField(controller: _languageCtrl, hint: 'Язык'),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Год публикации:'),
-                  _EditField(
-                    controller: _yearCtrl,
-                    hint: 'Год',
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Количество экземпляров:'),
-                  _EditField(
-                    controller: _quantityCtrl,
-                    hint: '0',
-                    keyboardType: TextInputType.number,
-                    readOnly: true,
-                  ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Статус:'),
-                  _StatusDropdown(
-                    value:     _selectedCopyStatus,
-                    items:     _copyStatuses,
-                    labels:    _copyStatusLabels,
-                    onChanged: (v) => setState(
-                            () => _selectedCopyStatus = v ?? 'available'),
-                  ),
-                  const SizedBox(height: 14),
-
-                  _FieldLabel('Описывать:'),
-                  _EditField(
-                    controller: _descCtrl,
-                    hint: 'Введите описание книги…',
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          );
-        },
-      ), // BlocConsumer
-    );   // BlocListener
+                ),
+              );
+            },
+          ), // BlocConsumer
+        )  // BlocListener
+    );   // MultiBlocListener
   }
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
@@ -366,18 +427,18 @@ class _BookDetailManagerState extends State<BookDetailManager> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: widget.book.image_url.isNotEmpty
+          child: _pickedImageFile != null
+              ? Image.file(_pickedImageFile!, fit: BoxFit.cover)
+              : widget.book.image_url.isNotEmpty
               ? Image.network(
             "${ApiService.baseUrl}${widget.book.image_url}",
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => const Center(
-              child: Icon(Icons.menu_book,
-                  color: Colors.white54, size: 36),
+              child: Icon(Icons.menu_book, color: Colors.white54, size: 36),
             ),
           )
               : const Center(
-            child: Icon(Icons.menu_book,
-                color: Colors.white54, size: 36),
+            child: Icon(Icons.menu_book, color: Colors.white54, size: 36),
           ),
         ),
       ),
@@ -390,10 +451,17 @@ class _BookDetailManagerState extends State<BookDetailManager> {
           padding: const EdgeInsets.symmetric(
               horizontal: 14, vertical: 10),
         ),
-        onPressed: () {/* TODO: image picker */},
-        icon: const Icon(Icons.upload_file, color: _orange, size: 18),
-        label: const Text('Импорт изображения',
-            style: TextStyle(color: _orange, fontSize: 13)),
+        onPressed: _imageUploading ? null : _pickAndUploadImage,
+        icon: _imageUploading
+            ? const SizedBox(
+          width: 16, height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: _orange),
+        )
+            : const Icon(Icons.upload_file, color: _orange, size: 18),
+        label: Text(
+          _imageUploading ? 'Загрузка…' : 'Импорт изображения',
+          style: const TextStyle(color: _orange, fontSize: 13),
+        ),
       ),
     ],
   );

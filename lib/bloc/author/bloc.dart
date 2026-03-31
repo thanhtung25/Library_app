@@ -25,7 +25,7 @@ class AuthorBloc extends Bloc<AuthorEvent, AuthorState> {
     emit(AuthorLoading());
     try {
       final AuthorModel author =
-      await authorservice.getAuthorByID(event.id_book);
+      await authorservice.getAuthorByID(event.id_author);
       emit(AuthorLoadedState(author: author));
     } catch (e) {
       emit(AuthorError(e.toString()));
