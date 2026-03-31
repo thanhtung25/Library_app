@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:library_app/model/user_model.dart';
+import 'package:library_app/Router/AppRoutes.dart';
 import 'BookList/Booklistscreen.dart';
 import 'LoanManagement/Loanmanagementscreen.dart';
 import 'Report/Reportscreen.dart';
@@ -14,6 +15,7 @@ class LibrarianShell extends StatefulWidget {
 }
 
 class _LibrarianShellState extends State<LibrarianShell> {
+  static const _orange = Color(0xffFF9E74);
   int _currentIndex = 0;
 
   late final List<Widget> _pages;
@@ -22,15 +24,56 @@ class _LibrarianShellState extends State<LibrarianShell> {
   void initState() {
     super.initState();
     _pages = [
-      BookListScreen(user: widget.user,),
+      BookListScreen(user: widget.user),
       LoanManagementScreen(user: widget.user),
       ReportScreen(user: widget.user),
       UserManagementScreen(user: widget.user),
     ];
   }
 
-  void _onTabTapped(int index) {
-    setState(() => _currentIndex = index);
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: Color(0xffFF9E74)),
+            SizedBox(width: 8),
+            Text(
+              'Выйти из системы',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: const Text('Вы уверены, что хотите выйти?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Отмена',
+                style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xffFF9E74),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.login,
+            (route) => false,
+      );
+    }
   }
 
   @override
@@ -49,27 +92,53 @@ class _LibrarianShellState extends State<LibrarianShell> {
           child: SizedBox(
             height: 62,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavBarIcon(
-                  icon: Icons.menu_book_rounded,
-                  selected: _currentIndex == 0,
-                  onTap: () => _onTabTapped(0),
+                // ── 4 nav tabs ─────────────────────────────────────
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _NavBarIcon(
+                        icon: Icons.menu_book_rounded,
+                        selected: _currentIndex == 0,
+                        onTap: () => setState(() => _currentIndex = 0),
+                      ),
+                      _NavBarIcon(
+                        icon: Icons.swap_horiz_rounded,
+                        selected: _currentIndex == 1,
+                        onTap: () => setState(() => _currentIndex = 1),
+                      ),
+                      _NavBarIcon(
+                        icon: Icons.bar_chart_rounded,
+                        selected: _currentIndex == 2,
+                        onTap: () => setState(() => _currentIndex = 2),
+                      ),
+                      _NavBarIcon(
+                        icon: Icons.people_rounded,
+                        selected: _currentIndex == 3,
+                        onTap: () => setState(() => _currentIndex = 3),
+                      ),
+                    ],
+                  ),
                 ),
-                _NavBarIcon(
-                  icon: Icons.swap_horiz_rounded,
-                  selected: _currentIndex == 1,
-                  onTap: () => _onTabTapped(1),
+
+                // ── Divider ─────────────────────────────────────────
+                Container(
+                  width: 1,
+                  height: 36,
+                  color: Colors.grey.shade200,
                 ),
-                _NavBarIcon(
-                  icon: Icons.bar_chart_rounded,
-                  selected: _currentIndex == 2,
-                  onTap: () => _onTabTapped(2),
-                ),
-                _NavBarIcon(
-                  icon: Icons.people_rounded,
-                  selected: _currentIndex == 3,
-                  onTap: () => _onTabTapped(3),
+
+                // ── Logout button ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: IconButton(
+                    icon: const Icon(Icons.logout_rounded,
+                        color: Colors.redAccent, size: 26),
+                    tooltip: 'Выйти',
+                    onPressed: _logout,
+                    splashRadius: 24,
+                  ),
                 ),
               ],
             ),

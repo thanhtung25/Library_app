@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:library_app/api_localhost/AuthorService.dart';
@@ -17,7 +19,9 @@ import '../../api_localhost/BookService.dart';
 import '../../bloc/book/bloc.dart';
 import '../../bloc/book_copy/bloc.dart';
 import '../../bloc/book_copy/state.dart';
+import '../../model/author_model.dart';
 import '../../model/book_copy_model.dart';
+import '../../model/notification_model.dart';
 import '../../model/user_model.dart';
 import 'Books/book_card.dart';
 
@@ -42,9 +46,17 @@ class _HomeTabState extends State<HomeTab> {
   int    _catIndex    = 0;
   String _catSelected = '';
 
+  List<NotificationModel> _notifications = [];
+  bool _notifLoading = false;
+  Timer? _notifTimer;
+
   // ─── BookService instance ───────────────────────────────
   final bookService _bookService = bookService();
   final Authorservice _authorservice = Authorservice();
+
+  final Map<int, Future<AuthorModel>> _authorFutures = {};
+
+
 
   @override
   void initState() {
@@ -53,7 +65,180 @@ class _HomeTabState extends State<HomeTab> {
     context.read<BookBloc>().add(GetBookEvent());
     context.read<CategoryBloc>().add(GetAllCategoryEvent());
     context.read<BookCopyBloc>().add(GetBookCopyEvent());
+
+    // ── Notifications ──
+    _fetchNotifications();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 30),
+          (_) => _fetchNotifications(),
+    );
   }
+
+  @override
+  void dispose() {
+    _notifTimer?.cancel();
+    super.dispose();
+  }
+  // ─── Fetch notifications cho user hiện tại ──────────────────────────
+  Future<void> _fetchNotifications() async {
+    if (_notifLoading || !mounted) return;
+    _notifLoading = true;
+    try {
+      final data = await ApiService.get('/notifications-management/notifications');
+      if (!mounted) return;
+      final all = (data is List ? data : (data['notifications'] as List? ?? []))
+      as List;
+      final mine = all
+          .map((e) => NotificationModel.fromJson(e as Map<String, dynamic>))
+          .where((n) => n.id_user == widget.user.id_user)
+          .toList()
+        ..sort((a, b) => (b.sent_at ?? DateTime(0))
+            .compareTo(a.sent_at ?? DateTime(0)));
+      if (mounted) setState(() => _notifications = mine);
+    } catch (_) {}
+    _notifLoading = false;
+  }
+
+// ─── Đánh dấu đã đọc ────────────────────────────────────────────────
+  Future<void> _markRead(NotificationModel n) async {
+    if (n.is_read || n.id_notification == null) return;
+    try {
+      await ApiService.put(
+        '/notifications-management/notification/${n.id_notification}',
+        {'is_read': true},
+      );
+      if (!mounted) return;
+      setState(() {
+        _notifications = _notifications
+            .map((x) => x.id_notification == n.id_notification
+            ? x.copyWith(is_read: true)
+            : x)
+            .toList();
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _markAllRead() async {
+    final unread = _notifications.where((n) => !n.is_read).toList();
+    for (final n in unread) await _markRead(n);
+  }
+
+// ─── Panel thông báo ────────────────────────────────────────────────
+  void _showNotificationSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final unread = _notifications.where((n) => !n.is_read).length;
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                // ── Handle ──
+                const SizedBox(height: 10),
+                Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // ── Header ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(children: [
+                        const Text(
+                          'Уведомления',
+                          style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w800,
+                            color: Color(0xff3D2314),
+                          ),
+                        ),
+                        if (unread > 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _orange,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text('$unread',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ]),
+                      if (unread > 0)
+                        TextButton(
+                          onPressed: () async {
+                            await _markAllRead();
+                            setSheet(() {});
+                          },
+                          child: const Text(
+                            'Прочитать все',
+                            style: TextStyle(
+                                color: _orange, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                // ── List ──
+                Expanded(
+                  child: _notifications.isEmpty
+                      ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.notifications_none_rounded,
+                            size: 64, color: Colors.grey.shade300),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Нет уведомлений',
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  )
+                      : ListView.separated(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: _notifications.length,
+                    separatorBuilder: (_, __) =>
+                    const Divider(height: 1, indent: 70),
+                    itemBuilder: (_, i) {
+                      final n = _notifications[i];
+                      return _NotifTile(
+                        notif: n,
+                        onTap: () async {
+                          await _markRead(n);
+                          setSheet(() {});
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
 
   // ─── build ─────────────────────────────────────────────
   @override
@@ -130,26 +315,49 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ]),
 
-          Stack(children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
-            ),
-            Positioned(
-              right: 9, top: 7,
-              child: Container(
-                width: 9, height: 9,
+          GestureDetector(
+            onTap: _showNotificationSheet,
+            child: Stack(children: [
+              Container(
+                width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.red.shade400, shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(13),
                 ),
+                child: const Icon(Icons.notifications_outlined,
+                    color: Colors.white, size: 22),
               ),
-            ),
-          ]),
+              // Badge số thông báo chưa đọc
+              Builder(builder: (_) {
+                final unread =
+                    _notifications.where((n) => !n.is_read).length;
+                if (unread == 0) return const SizedBox.shrink();
+                return Positioned(
+                  right: 6, top: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 1),
+                    constraints:
+                    const BoxConstraints(minWidth: 16, minHeight: 16),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade500,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                );
+              }),
+            ]),
+          ),
+
         ],
       ),
     );
@@ -450,15 +658,14 @@ class _HomeTabState extends State<HomeTab> {
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    // ✅ Code mới
                     children: books.map((book) {
-                      // Gọi GetBookByIdBookEvent nếu chưa có bản copy cho book này
-                      if (!copyByBook.containsKey(book.id_book)) {
-                        context.read<BookCopyBloc>().add(
-                          GetBookByIdBookEvent(id_book: book.id_book),
-                        );
-                      }
+                      // Cache future tác giả — không tạo mới mỗi lần build
+                      _authorFutures.putIfAbsent(
+                        book.id_author,
+                            () => _authorservice.getAuthorByID(book.id_author),
+                      );
 
-                      // Lấy bookCopy tương ứng; nếu chưa có thì dùng placeholder
                       final BookCopyModel bookCopy = copyByBook[book.id_book] ??
                           BookCopyModel(
                             id_book: book.id_book,
@@ -470,12 +677,13 @@ class _HomeTabState extends State<HomeTab> {
                         book: book,
                         user: widget.user,
                         bookCopy: bookCopy,
-                        authorFuture: _authorservice.getAuthorByID(book.id_author),
+                        authorFuture: _authorFutures[book.id_author]!,  // Dùng cache
                         onReload: () => context.read<BookBloc>().add(GetBookEvent()),
                         onReservationLoad: () => context.read<ReservationBloc>()
                             .add(GetReservationsByUserEvent(widget.user.id_user)),
                       );
                     }).toList(),
+
                   ),
                 );
               },
@@ -533,3 +741,279 @@ class _ActionBtn extends StatelessWidget {
     );
   }
 }
+
+
+class _NotifTile extends StatelessWidget {
+  final NotificationModel notif;
+  final VoidCallback onTap;
+  const _NotifTile({required this.notif, required this.onTap});
+
+  // ── Tách phần text và barcode từ message ──────────────────────────
+  String get _messageText {
+    final idx = notif.message.indexOf('|BARCODE:');
+    return idx >= 0 ? notif.message.substring(0, idx) : notif.message;
+  }
+
+  String? get _barcodeValue {
+    final idx = notif.message.indexOf('|BARCODE:');
+    if (idx < 0) return null;
+    final val = notif.message.substring(idx + 9);
+    return val.isNotEmpty ? val : null;
+  }
+
+  // ── Icon / color / label theo type ───────────────────────────────
+  IconData get _icon {
+    switch (notif.type) {
+      case 'loan_ready': return Icons.check_circle_outline_rounded;
+      case 'overdue':    return Icons.warning_amber_rounded;
+      case 'due_soon':   return Icons.access_time_rounded;
+      default:           return Icons.notifications_outlined;
+    }
+  }
+
+  Color get _color {
+    switch (notif.type) {
+      case 'loan_ready': return Colors.green;
+      case 'overdue':    return Colors.red;
+      case 'due_soon':   return const Color(0xffFF9E74);
+      default:           return Colors.blueGrey;
+    }
+  }
+
+  String get _typeLabel {
+    switch (notif.type) {
+      case 'loan_ready': return 'Книга готова';
+      case 'overdue':    return 'Просрочка';
+      case 'due_soon':   return 'Скоро истекает';
+      default:           return notif.type;
+    }
+  }
+
+  void _showQrSheet(BuildContext context, String code) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Код для сканирования',
+              style: TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w800,
+                color: Color(0xff3D2314),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // QR code
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Image.network(
+                'https://api.qrserver.com/v1/create-qr-code/'
+                    '?size=200x200&data=${Uri.encodeComponent(code)}',
+                width: 200, height: 200,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const SizedBox(
+                  width: 200, height: 200,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                errorBuilder: (_, __, ___) => const SizedBox(
+                  width: 200, height: 200,
+                  child: Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Barcode text
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                code,
+                style: const TextStyle(
+                  fontFamily: 'Courier',
+                  color: Colors.white,
+                  fontSize: 18,
+                  letterSpacing: 4,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Предъявите этот код библиотекарю',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final barcode = _barcodeValue;
+    final timeStr = notif.sent_at != null
+        ? '${notif.sent_at!.day.toString().padLeft(2, '0')}/'
+        '${notif.sent_at!.month.toString().padLeft(2, '0')}/'
+        '${notif.sent_at!.year}  '
+        '${notif.sent_at!.hour.toString().padLeft(2, '0')}:'
+        '${notif.sent_at!.minute.toString().padLeft(2, '0')}'
+        : '';
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        color: notif.is_read ? Colors.transparent : _color.withOpacity(0.05),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Icon ──
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: _color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(_icon, color: _color, size: 20),
+            ),
+            const SizedBox(width: 12),
+
+            // ── Content ──
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Type label + unread dot
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _typeLabel,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: _color,
+                        ),
+                      ),
+                      if (!notif.is_read)
+                        Container(
+                          width: 8, height: 8,
+                          decoration: BoxDecoration(
+                              color: _color, shape: BoxShape.circle),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+
+                  // Message text (không hiện phần BARCODE)
+                  Text(
+                    _messageText,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: notif.is_read
+                          ? Colors.grey.shade500
+                          : const Color(0xff3D2314),
+                      height: 1.4,
+                    ),
+                  ),
+
+                  // ── QR preview cho loan_ready ──
+                  if (barcode != null) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => _showQrSheet(context, barcode),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.qr_code_2_rounded,
+                                size: 28, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Показать QR-код',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                                Text(
+                                  barcode.length > 16
+                                      ? '${barcode.substring(0, 16)}…'
+                                      : barcode,
+                                  style: TextStyle(
+                                    fontFamily: 'Courier',
+                                    fontSize: 11,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(Icons.chevron_right_rounded,
+                                color: Colors.green.shade400, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  if (timeStr.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(timeStr,
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade400)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

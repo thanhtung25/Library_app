@@ -80,7 +80,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       final list = rawList
           .map((e) => _LibUser.fromJson(e as Map<String, dynamic>))
           .toList();
-      setState(() { _users = list; _loading = false; });
+      setState(() {
+        _users = list.where((u) => u.role == 'reader').toList();
+        _loading = false;
+      });
       _applyFilter();
     } catch (e) {
       setState(() { _error = e.toString(); _loading = false; });
@@ -274,12 +277,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             padding: const EdgeInsets.only(left: 12, bottom: 8),
             child: Row(
               children: [
-                _chip('Tổng: ${_users.length}',            Colors.blueGrey),
+                _chip('Độc giả: ${_users.length}', Colors.blueGrey),
                 const SizedBox(width: 8),
-                _chip('Active: ${_users.where((u) => u.status == "active").length}',
+                _chip('Hoạt động: ${_users.where((u) => u.status == "active").length}',
                     Colors.green),
                 const SizedBox(width: 8),
-                _chip('Inactive: ${_users.where((u) => u.status != "active").length}',
+                _chip('Khoá: ${_users.where((u) => u.status != "active").length}',
                     Colors.red),
               ],
             ),
@@ -332,7 +335,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         Expanded(flex: 3, child: _H('Họ tên')),
         Expanded(flex: 2, child: _H('Thẻ TV')),
         Expanded(flex: 2, child: _H('SĐT')),
-        Expanded(flex: 1, child: _H('Role')),
         SizedBox(width: 36),
       ],
     ),
@@ -382,28 +384,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
             Expanded(flex: 2, child: _cell(u.libraryCard)),
             Expanded(flex: 2, child: _cell(u.phone)),
-            Expanded(
-              flex: 1,
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                decoration: BoxDecoration(
-                  color: u.role == 'librarian'
-                      ? _orange.withOpacity(0.15)
-                      : Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  u.role == 'librarian' ? 'TV' : 'Đọc',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: u.role == 'librarian' ? _orange : Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
+
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
               onSelected: (v) {

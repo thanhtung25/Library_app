@@ -92,13 +92,17 @@ class _LoanManagementScreenState extends State<LoanManagementScreen>
     if (ok != true) return;
 
     try {
+      final barcodeVal = copy?['barcode']?.toString() ?? '';
+      final qrVal      = copy?['qr_code']?.toString() ?? barcodeVal;
+      final scanCode   = qrVal.isNotEmpty ? qrVal : barcodeVal;
       await ApiService.put('/loans-management/loan/${loan.idLoan}',
           {'status': 'borrowed'});
       await ApiService.post('/notifications-management/notification', {
         'id_user': loan.idUser,
         'type':    'loan_ready',
         'message': 'Phiếu mượn #${loan.idLoan}: Bạn đã nhận bản sao '
-            '#${loan.idCopy}. Hạn trả: ${loan.returnDate}.',
+            '#${loan.idCopy}. Hạn trả: ${loan.returnDate}.'
+            '${scanCode.isNotEmpty ? '|BARCODE:$scanCode' : ''}',
       });
       _showSuccess('Đã xác nhận phát sách và gửi thông báo!');
       _fetchLoans();

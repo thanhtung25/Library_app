@@ -40,6 +40,13 @@ class _BooksScreenState extends State<BooksScreen> {
 
   // ── BookService instance ─────────────────────────────
   final bookService _bookService = bookService();
+  final Map<int, Future<AuthorModel>> _authorFutures = {};
+  Future<AuthorModel> _getAuthorFuture(int idAuthor) =>
+      _authorFutures.putIfAbsent(
+        idAuthor,
+            () => Authorservice().getAuthorByID(idAuthor),
+      );
+
 
   // ── 3 bộ lọc ─────────────────────────────────────
   String _searchQuery        = '';
@@ -149,14 +156,7 @@ class _BooksScreenState extends State<BooksScreen> {
 
 
   // ── Helper: lấy BookCopyModel, tự dispatch nếu chưa có ──
-  BookCopyModel _getCopy(
-      BuildContext context,
-      int idBook,
-      Map<int, BookCopyModel> copyByBook,
-      ) {
-    if (!copyByBook.containsKey(idBook)) {
-      context.read<BookCopyBloc>().add(GetBookByIdBookEvent(id_book: idBook));
-    }
+  BookCopyModel _getCopy(int idBook, Map<int, BookCopyModel> copyByBook) {
     return copyByBook[idBook] ??
         BookCopyModel(id_book: idBook, barcode: '', status: 'unknown');
   }
@@ -827,8 +827,8 @@ class _BooksScreenState extends State<BooksScreen> {
                   children: books.map((book) => BookCard(
                     book: book,
                     user: widget.user,
-                    bookCopy: _getCopy(context, book.id_book, copyByBook),
-                    authorFuture: Authorservice().getAuthorByID(book.id_author),
+                    bookCopy: _getCopy(book.id_book, copyByBook),
+                    authorFuture: _getAuthorFuture(book.id_author),
                     onReload: () => context.read<BookBloc>()
                         .add(GetBookByCategoryEvent(category: catName)),
                     onReservationLoad: () => context.read<ReservationBloc>()
@@ -859,8 +859,8 @@ class _BooksScreenState extends State<BooksScreen> {
         children: books.map((book) => BookCard(
           book: book,
           user: widget.user,
-          bookCopy: _getCopy(context, book.id_book, copyByBook),
-          authorFuture: Authorservice().getAuthorByID(book.id_author),
+          bookCopy: _getCopy(book.id_book, copyByBook),
+          authorFuture: _getAuthorFuture(book.id_author),
           onReload: onReload,
           onReservationLoad: () => context.read<ReservationBloc>()
               .add(GetReservationsByUserEvent(widget.user.id_user)),
@@ -925,8 +925,8 @@ class _BooksScreenState extends State<BooksScreen> {
           itemBuilder: (context, i) => _SearchItem(
             book: books[i],
             user: widget.user,
-            bookCopy: _getCopy(context, books[i].id_book, copyByBook),
-            authorFuture: Authorservice().getAuthorByID(books[i].id_author),
+            bookCopy: _getCopy(books[i].id_book, copyByBook),
+            authorFuture: _getAuthorFuture(books[i].id_author),
             onReload: () => context.read<BookBloc>().add(GetBookEvent()),
             onReservationLoad: () => context.read<ReservationBloc>()
                 .add(GetReservationsByUserEvent(widget.user.id_user)),
