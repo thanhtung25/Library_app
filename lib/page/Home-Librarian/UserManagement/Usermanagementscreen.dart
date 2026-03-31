@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:library_app/api_localhost/ApiService.dart';
 import 'package:library_app/model/user_model.dart';
+import 'package:library_app/page/Home-Librarian/UserManagement/user_detail_screen.dart';
 
 // ─── Simple display model ──────────────────────────────────────────────────────
 class _LibUser {
@@ -12,6 +13,7 @@ class _LibUser {
   final String phone;
   final String libraryCard;
   final String email;
+  final Map<String, dynamic> rawData;
 
   _LibUser({
     required this.id,
@@ -22,6 +24,7 @@ class _LibUser {
     required this.phone,
     required this.libraryCard,
     required this.email,
+    required this.rawData,
   });
 
   factory _LibUser.fromJson(Map<String, dynamic> j) => _LibUser(
@@ -33,6 +36,7 @@ class _LibUser {
     phone:       j['phone']        ?? '',
     libraryCard: j['library_card'] ?? '',
     email:       j['email']        ?? '',
+    rawData:     j,
   );
 }
 
@@ -72,7 +76,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       final data = await ApiService.get('/users-management/users');
-      final list = (data['users'] as List? ?? data as List)
+      final rawList = data is List ? data as List : (data['users'] as List? ?? []);
+      final list = rawList
           .map((e) => _LibUser.fromJson(e as Map<String, dynamic>))
           .toList();
       setState(() { _users = list; _loading = false; });
@@ -336,7 +341,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Widget _userRow(_LibUser u) {
     final isActive = u.status == 'active';
     return GestureDetector(
-      onTap: () => _showDetail(u),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => UserDetailScreen(userData: u.rawData),
+        ),
+      ),
       child: Container(
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
@@ -397,7 +407,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
               onSelected: (v) {
-                if (v == 'detail') _showDetail(u);
+                if (v == 'detail') Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserDetailScreen(userData: u.rawData),
+                  ),
+                );
                 if (v == 'toggle') _toggleStatus(u);
               },
               itemBuilder: (_) => [
