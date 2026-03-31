@@ -96,7 +96,8 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return data;
     } else {
-      throw Exception(data["message"] ?? "API error");
+      final msg = data["message"] ?? data["error"] ?? "API error";
+      throw Exception(msg);
     }
   }
 }

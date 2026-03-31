@@ -40,6 +40,7 @@ class _AddBookScreenState extends State<AddBookScreen> {
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
   File? _pickedImageFile;
+  bool _bookCreated = false;
 
   // ── Выбранные значения ──────────────────────────────────────────────────────
   CategoryModel? _selectedCategory;
@@ -84,6 +85,8 @@ class _AddBookScreenState extends State<AddBookScreen> {
       _showSnack('Выберите год издания', Colors.redAccent);
       return;
     }
+    // Reset flag trước mỗi lần submit để tránh lỗi từ lần trước ảnh hưởng
+    _bookCreated = false;
     context.read<BookBloc>().add(
       CreateBookEvent(
         id_category:  _selectedCategory!.id_category,
@@ -340,23 +343,35 @@ class _AddBookScreenState extends State<AddBookScreen> {
           listener: (context, state) {
             if (state is BookCreatedSuccess) {
               if (_pickedImageFile != null) {
+                _bookCreated = true;
                 context.read<BookBloc>().add(
                   UploadImgBookSubmitted(
                     id_book: state.book.id_book,
                     imageFile: _pickedImageFile!,
                   ),
                 );
+              } else {
+                _showSnack('Книга успешно добавлена!', _orange);
+                Navigator.pop(context, true);
               }
+            }
+
+            if (state is ImgBookUploadSuccess) {
               _showSnack('Книга успешно добавлена!', _orange);
               Navigator.pop(context, true);
             }
             if (state is BookError) {
-              _showSnack('Ошибка: ${state.message}', Colors.redAccent);
+              if (_bookCreated) {
+                _bookCreated = false;
+                _showSnack('Книга добавлена, но не удалось загрузить изображение', Colors.orange);
+                Navigator.pop(context, true);
+              } else {
+                _showSnack('Ошибка: ${state.message}', Colors.redAccent);
+              }
             }
           },
           builder: (context, state) {
-            final isLoading = state is BookLoading;
-
+            final isLoading = state is BookLoading || state is UploadImageLoading;
             return Scaffold(
               backgroundColor: _bg,
               appBar: _buildAppBar(isLoading),

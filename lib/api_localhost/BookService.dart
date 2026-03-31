@@ -121,7 +121,7 @@ class bookService {
 
     request.files.add(
       await http.MultipartFile.fromPath(
-        'image_book',
+        'books',
         imageFile.path,
         contentType: mediaType,
       ),
