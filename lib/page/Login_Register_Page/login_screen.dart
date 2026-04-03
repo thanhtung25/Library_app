@@ -77,13 +77,16 @@ class _LoginScreenState extends State<LoginScreen> {
             }
           },
   child: Container(
-        padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
         constraints: const BoxConstraints.expand(),
         color: const Color(0xffFBEEE4),
-        child: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(30, 0, 30, 0),
           child: Column(
             children: <Widget>[
-              const SizedBox(height: 140,),
+              const SizedBox(height: 80,),
               const Image(
                 width: 200,
                 image: AssetImage('assets/images/lich.png'),
@@ -220,6 +223,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               )
             ],
+          ),
+        ),
           ),
         ),
       ),

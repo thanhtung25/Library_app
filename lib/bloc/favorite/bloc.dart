@@ -67,7 +67,11 @@ class FavoriteBloc extends Bloc<FavoriteEvent, FavoriteState> {
       ) async {
     try {
       await favoriteService.addFavorite(event.favorite);
-      emit(FavoriteActionSuccess());
+      // Auto-reload favorites for the user after add
+      final userId = event.favorite.id_user;
+      final favorites = await favoriteService.getFavoritesByUserId(userId);
+      _favoritesByUser[userId] = favorites;
+      emit(FavoriteByUserSuccess(Map.from(_favoritesByUser), _allFavorites));
     } catch (e) {
       emit(FavoriteError(e.toString()));
     }
@@ -79,7 +83,12 @@ class FavoriteBloc extends Bloc<FavoriteEvent, FavoriteState> {
       ) async {
     try {
       await favoriteService.deleteFavorite(event.id_favorite);
-      emit(FavoriteActionSuccess());
+      // Auto-reload favorites for all cached users after delete
+      for (final userId in _favoritesByUser.keys) {
+        final favorites = await favoriteService.getFavoritesByUserId(userId);
+        _favoritesByUser[userId] = favorites;
+      }
+      emit(FavoriteByUserSuccess(Map.from(_favoritesByUser), _allFavorites));
     } catch (e) {
       emit(FavoriteError(e.toString()));
     }

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -70,6 +71,13 @@ class _MyAppState extends State<MyApp> {
           child: MaterialApp(
             title: 'Library Management App',
             debugShowCheckedModeBanner: false,
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              dragDevices: {
+                PointerDeviceKind.touch,
+                PointerDeviceKind.mouse,
+                PointerDeviceKind.trackpad,
+              },
+            ),
             locale: localeController.locale,
             supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const [

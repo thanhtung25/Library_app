@@ -246,14 +246,20 @@ class _HomeTabState extends State<HomeTab> {
     return Scaffold(
       backgroundColor: _bg,
       body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(child: _header()),
-          SliverToBoxAdapter(child: _searchBar()),
-          SliverToBoxAdapter(child: _bannerCard()),
-          SliverToBoxAdapter(child: _quickActions()),
-          SliverToBoxAdapter(child: _bookSection()),
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
+          SliverToBoxAdapter(child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: Column(children: [
+                _searchBar(),
+                _bannerCard(),
+                _quickActions(),
+                _bookSection(),
+                const SizedBox(height: 110),
+              ]),
+            ),
+          )),
         ],
       ),
     );
@@ -264,7 +270,7 @@ class _HomeTabState extends State<HomeTab> {
   // ═══════════════════════════════════════════════════════
   Widget _header() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 56, 22, 28),
+      padding: EdgeInsets.fromLTRB(22, MediaQuery.of(context).padding.top + 16, 22, 28),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xffFF6D40), Color(0xffFF9E74)],

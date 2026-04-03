@@ -328,7 +328,10 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFCBEAF3),
       body: SafeArea(
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: Column(
           children: [
             // ── Header ──
             Padding(
@@ -460,6 +463,8 @@ class _CartReservationScreenState extends State<CartReservationScreen> {
               ),
             ),
           ],
+        ),
+          ),
         ),
       ),
     );

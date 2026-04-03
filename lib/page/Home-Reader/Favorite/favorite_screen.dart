@@ -82,13 +82,20 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
     return copyByBook;
   }
 
+  final Set<int> _pendingCopyRequests = {};
+
   BookCopyModel _getCopy(
       BuildContext context,
       int idBook,
       Map<int, BookCopyModel> copyByBook,
       ) {
-    if (!copyByBook.containsKey(idBook)) {
-      context.read<BookCopyBloc>().add(GetBookByIdBookEvent(id_book: idBook));
+    if (!copyByBook.containsKey(idBook) && !_pendingCopyRequests.contains(idBook)) {
+      _pendingCopyRequests.add(idBook);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          context.read<BookCopyBloc>().add(GetBookByIdBookEvent(id_book: idBook));
+        }
+      });
     }
     return copyByBook[idBook] ??
         BookCopyModel(id_book: idBook, barcode: '', status: 'unknown');
@@ -99,7 +106,10 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -146,19 +156,14 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
 
           Expanded(child: _buildGrid()),
         ]),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildGrid() {
-    return BlocConsumer<FavoriteBloc, FavoriteState>(
-      // Reload sau khi add/delete thành công
-      listenWhen: (prev, curr) => curr is FavoriteActionSuccess,
-      listener: (context, state) {
-        context.read<FavoriteBloc>().add(
-          GetFavoritesByUserIdEvent(id_user: widget.user.id_user),
-        );
-      },
+    return BlocBuilder<FavoriteBloc, FavoriteState>(
       buildWhen: (prev, curr) =>
       curr is FavoriteByUserSuccess ||
           curr is FavoriteLoading ||

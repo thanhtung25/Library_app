@@ -169,7 +169,10 @@ class _BooksScreenState extends State<BooksScreen> {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1200),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _topBar(),
@@ -180,6 +183,8 @@ class _BooksScreenState extends State<BooksScreen> {
             const SizedBox(height: 4),
             Expanded(child: _content()),
           ],
+        ),
+          ),
         ),
       ),
     );

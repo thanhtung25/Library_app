@@ -106,13 +106,8 @@ class BookCard extends StatelessWidget {
                   Positioned(
                     top: 10, right: 10,
                     child: BlocConsumer<FavoriteBloc, FavoriteState>(
-                      listenWhen: (_, curr) =>
-                      curr is FavoriteActionSuccess || curr is FavoriteError,
+                      listenWhen: (_, curr) => curr is FavoriteError,
                       listener: (context, state) {
-                        if (state is FavoriteActionSuccess) {
-                          context.read<FavoriteBloc>().add(
-                              GetFavoritesByUserIdEvent(id_user: user.id_user));
-                        }
                         if (state is FavoriteError) {
                           ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text(state.message)));

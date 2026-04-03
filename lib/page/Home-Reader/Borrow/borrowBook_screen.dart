@@ -145,7 +145,10 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Column(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1000),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Заголовок ──────────────────────────────
@@ -231,6 +234,8 @@ class _BorrowbookScreenState extends State<BorrowbookScreen> {
             // ── Тело таблицы ───────────────────────────
             Expanded(child: _buildTable()),
           ],
+        ),
+          ),
         ),
       ),
     );

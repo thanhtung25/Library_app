@@ -154,10 +154,13 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
           }
         },
         child: Container(
-          padding: const EdgeInsets.fromLTRB(30, 20, 30, 0),
           constraints: const BoxConstraints.expand(),
           color: const Color(0xffFBEEE4),
-          child: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(30, 20, 30, 0),
             child: Column(
               children: [
                 Padding(
@@ -350,6 +353,8 @@ class _PersonInfoScreenState extends State<PersonInfoScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
             ),
           ),
         ),

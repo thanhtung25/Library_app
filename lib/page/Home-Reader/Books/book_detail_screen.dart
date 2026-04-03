@@ -116,7 +116,10 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             child: Column(
@@ -475,6 +478,8 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
                 ),
               ],
             ),
+          ),
+        ),
           ),
         ),
       ),
