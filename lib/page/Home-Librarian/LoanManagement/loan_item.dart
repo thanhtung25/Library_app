@@ -1,13 +1,16 @@
-// Model local cho Loan Management (riêng biệt với LoanModel của BLoC)
+// Модель для управления выдачей книг (отдельная от LoanModel BLoC)
 class LoanItem {
-  final int    idLoan;
-  final int    idUser;
-  final int    idCopy;
-  final int    renewalCount;
-  final String issueDate;
-  final String returnDate;
-  final String status;
+  final int     idLoan;
+  final int     idUser;
+  final int     idCopy;
+  final int     renewalCount;
+  final String  issueDate;
+  final String  returnDate;
+  final String  status;
   final String? actualReturnDate;
+
+  /// Полное имя читателя — заполняется после вызова getUserbyId
+  final String? userName;
 
   const LoanItem({
     required this.idLoan,
@@ -18,8 +21,10 @@ class LoanItem {
     required this.returnDate,
     required this.status,
     this.actualReturnDate,
+    this.userName,
   });
 
+  // ── Десериализация ────────────────────────────────────────────────────────
   factory LoanItem.fromJson(Map<String, dynamic> j) => LoanItem(
     idLoan:           j['id_loan']            ?? 0,
     idUser:           j['id_user']            ?? 0,
@@ -29,8 +34,36 @@ class LoanItem {
     returnDate:       j['return_date']        ?? '',
     status:           j['status']             ?? 'borrowed',
     actualReturnDate: j['actual_return_date']?.toString(),
+    // Если API уже возвращает имя пользователя — используем сразу
+    userName:         j['user_name']?.toString()
+        ?? j['full_name']?.toString(),
   );
 
+  // ── copyWith — нужен для добавления userName после запроса ───────────────
+  LoanItem copyWith({
+    int?     idLoan,
+    int?     idUser,
+    int?     idCopy,
+    int?     renewalCount,
+    String?  issueDate,
+    String?  returnDate,
+    String?  status,
+    String?  actualReturnDate,
+    String?  userName,
+  }) =>
+      LoanItem(
+        idLoan:           idLoan           ?? this.idLoan,
+        idUser:           idUser           ?? this.idUser,
+        idCopy:           idCopy           ?? this.idCopy,
+        renewalCount:     renewalCount     ?? this.renewalCount,
+        issueDate:        issueDate        ?? this.issueDate,
+        returnDate:       returnDate       ?? this.returnDate,
+        status:           status           ?? this.status,
+        actualReturnDate: actualReturnDate ?? this.actualReturnDate,
+        userName:         userName         ?? this.userName,
+      );
+
+  // ── Вычисляемые свойства (логика без изменений) ───────────────────────────
   DateTime? get returnDateTime => DateTime.tryParse(returnDate);
 
   int get daysOverdue {

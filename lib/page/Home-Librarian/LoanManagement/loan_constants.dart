@@ -16,10 +16,10 @@ Color loanStatusColor(String s) {
 
 String loanStatusLabel(String s) {
   switch (s) {
-    case 'reserved': return 'Đặt trước';
-    case 'borrowed': return 'Đang mượn';
-    case 'returned': return 'Đã trả';
-    case 'overdue':  return 'Quá hạn';
+    case 'reserved': return 'Бронировать';
+    case 'borrowed': return 'Заимствованный';
+    case 'returned': return 'Возвращено';
+    case 'overdue':  return 'Просрочено';
     default:         return s;
   }
 }
