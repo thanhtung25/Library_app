@@ -9,20 +9,18 @@ class LoanTableHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     color: kLoanOrange,
-    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
     child: const Row(
       children: [
-        Expanded(flex: 1, child: _H('ID')),
-        Expanded(flex: 3, child: _H('Читатель')),
-        Expanded(flex: 2, child: _H('Экз.')),
-        Expanded(flex: 3, child: _H('Срок возврата')),
-        Expanded(flex: 2, child: _H('Статус')),
-        SizedBox(width: 96),
+        Expanded(flex: 2, child: _H('ID')),
+        Expanded(flex: 3, child: Center(child: _H('User ID'))),
+        Expanded(flex: 4, child: Center(child: _H('Дата'))),
+        Expanded(flex: 3, child: Center(child: _H('Статус'))),
+        SizedBox(width: 44, child: Center(child: _H(''))),
       ],
     ),
   );
 }
-
 class _H extends StatelessWidget {
   final String t;
   const _H(this.t, {super.key});
@@ -64,125 +62,105 @@ class LoanRow extends StatelessWidget {
     final color = loanStatusColor(loan.status);
     final label = loanStatusLabel(loan.status);
 
-    // Показываем имя пользователя если есть, иначе ID
-    final userDisplay = (loan.userName != null && loan.userName!.trim().isNotEmpty)
-        ? loan.userName!
-        : 'Польз. #${loan.idUser}';
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: loan.isNearDeadline
-              ? Colors.orange.withOpacity(0.05)
-              : Colors.transparent,
+          color: Colors.white,
           border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
         ),
-        child: Column(
+        child: Row(
           children: [
-            if (loan.isNearDeadline)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-                color: Colors.orange.withOpacity(0.15),
-                child: Row(
-                  children: [
-                    const Icon(Icons.access_time, size: 13, color: Colors.orange),
-                    const SizedBox(width: 4),
-                    Text(
-                      loan.daysUntilReturn == 0
-                          ? 'Срок истекает сегодня'
-                          : 'Осталось ${loan.daysUntilReturn} дн.',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+            Expanded(
+              flex: 2,
+              child: Text(
+                '#${loan.idLoan}',
+                style: const TextStyle(fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Center(
+                child: Text(
+                  '#${loan.idUser}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 4,
+              child: Center(
+                child: Text(
+                  loan.issueDate,
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 68),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 44,
+              child: Center(
+                child: PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
+                  onSelected: (v) {
+                    if (v == 'detail') onTap();
+                    if (v == 'confirm') onConfirmBorrow?.call();
+                    if (v == 'return') onMarkReturn?.call();
+                    if (v == 'delete') onDelete?.call();
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'detail',
+                      child: Text('Подробнее'),
+                    ),
+                    if (loan.status == 'reserved' && onConfirmBorrow != null)
+                      const PopupMenuItem(
+                        value: 'confirm',
+                        child: Text('Подтвердить выдачу'),
                       ),
+                    if (loan.status == 'borrowed' || loan.status == 'overdue')
+                      const PopupMenuItem(
+                        value: 'return',
+                        child: Text('Отметить возврат'),
+                      ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Удалить'),
                     ),
                   ],
                 ),
               ),
-            Row(
-              children: [
-                Expanded(flex: 1, child: _cell(loan.idLoan.toString())),
-                Expanded(flex: 3, child: _cell(userDisplay, bold: true)),
-                Expanded(flex: 2, child: _cell('#${loan.idCopy}')),
-                Expanded(flex: 3, child: _cell(loan.returnDate)),
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 96,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (loan.status == 'reserved' && onConfirmBorrow != null)
-                        _actionBtn(Icons.qr_code_2, Colors.purple,
-                            'Подтвердить выдачу', onConfirmBorrow!),
-                      if (loan.isNearDeadline && onDueSoon != null)
-                        _actionBtn(Icons.notifications_active, Colors.orange,
-                            'Напомнить о сроке', onDueSoon!),
-                      if (loan.status == 'overdue' && onOverdue != null)
-                        _actionBtn(Icons.gavel, Colors.red,
-                            'Создать штраф и уведомление', onOverdue!),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert, size: 18, color: Colors.grey),
-                        onSelected: (v) {
-                          if (v == 'detail') onTap();
-                          if (v == 'return') onMarkReturn?.call();
-                          if (v == 'delete') onDelete?.call();
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'detail',
-                            child: ListTile(
-                              leading: Icon(Icons.info_outline),
-                              title: Text('Подробнее'),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                          if (loan.status == 'borrowed' || loan.status == 'overdue')
-                            const PopupMenuItem(
-                              value: 'return',
-                              child: ListTile(
-                                leading: Icon(Icons.check_circle_outline,
-                                    color: Colors.green),
-                                title: Text('Отметить возврат',
-                                    style: TextStyle(color: Colors.green)),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: ListTile(
-                              leading: Icon(Icons.delete_outline, color: Colors.red),
-                              title: Text('Удалить запись',
-                                  style: TextStyle(color: Colors.red)),
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
           ],
         ),
